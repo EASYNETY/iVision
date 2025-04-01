@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facial Login - Facial Recognition System</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .login-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            background-color: var(--bs-dark);
+        }
+        
+        .matrix-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.2;
+            background: #000;
+        }
+        
+        .camera-container {
+            width: 100%;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 2px solid var(--bs-info);
+            background-color: #111;
+        }
+        
+        #videoPreview {
+            width: 100%;
+            display: block;
+        }
+        
+        #canvas {
+            display: none;
+        }
+        
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            box-sizing: border-box;
+            z-index: 2;
+        }
+        
+        .scanning-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(to right, transparent, var(--bs-info), transparent);
+            animation: scan 2s linear infinite;
+            z-index: 3;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        
+        .camera-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .status-msg {
+            text-align: center;
+            margin: 15px 0;
+            font-weight: 500;
+            color: var(--bs-info);
+        }
+        
+        .recognition-status {
+            height: 30px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .or-divider {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+        
+        .or-divider:before, 
+        .or-divider:after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            width: 45%;
+            height: 1px;
+            background-color: var(--bs-secondary);
+        }
+        
+        .or-divider:before {
+            left: 0;
+        }
+        
+        .or-divider:after {
+            right: 0;
+        }
+        
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: var(--bs-secondary);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix" class="matrix-effect"></canvas>
+    
+    <div class="container">
+        <div class="login-container">
+            <h2 class="text-center mb-4">Facial Login</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div class="recognition-status" id="recognitionStatus"></div>
+            
+            <div class="camera-container">
+                <video id="videoPreview" autoplay muted></video>
+                <canvas id="canvas"></canvas>
+                <div class="camera-overlay"></div>
+                <div class="scanning-effect"></div>
+            </div>
+            
+            <p class="status-msg" id="statusMessage">Allow camera access and look at the camera</p>
+            
+            <div class="camera-buttons">
+                <button id="captureBtn" class="btn btn-info">Capture & Login</button>
+                <button id="retakeBtn" class="btn btn-secondary" style="display: none;">Retake</button>
+            </div>
+            
+            <form id="faceLoginForm" method="POST" action="{{ url_for('identify') }}" enctype="multipart/form-data" style="display: none;">
+                <input type="file" id="imageInput" name="image" accept="image/*">
+                <input type="hidden" name="login" value="true">
+            </form>
+            
+            <div class="or-divider">
+                <span class="px-2 bg-dark">OR</span>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <a href="{{ url_for('login') }}" class="btn btn-outline-success">Login with Credentials</a>
+                <a href="{{ url_for('register') }}" class="btn btn-outline-primary">Register New User</a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Home</a>
+            </div>
+            
+            <div class="login-footer">
+                <p>Secure Facial Recognition Authentication System</p>
+                <p>© 2025 All Rights Reserved</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Matrix effect for the background
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size to match window
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Characters to display
+        const characters = '01';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        
+        // One drop per column
+        const drops = [];
+        for (let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
+        
+        // Drawing the characters
+        function draw() {
+            // Black with opacity for the fade effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#0F0'; // green text
+            ctx.font = fontSize + 'px monospace';
+            
+            // Drawing the characters
+            for (let i = 0; i < drops.length; i++) {
+                // Random character
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                
+                // x = i * fontSize, y = drops[i] * fontSize
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                
+                // Sending the drop back to the top after it reaches a random point
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                
+                // Move drops down
+                drops[i]++;
+            }
+        }
+        
+        setInterval(draw, 35);
+
+        // Facial recognition functionality
+        const video = document.getElementById('videoPreview');
+        const captureCanvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('captureBtn');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const imageInput = document.getElementById('imageInput');
+        const faceLoginForm = document.getElementById('faceLoginForm');
+        const recognitionStatus = document.getElementById('recognitionStatus');
+        
+        let cameraStream = null;
+        
+        // Initialize camera
+        async function initCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    }
+                };
+                
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = cameraStream;
+                statusMessage.textContent = 'Camera ready. Look directly at the camera and click "Capture & Login"';
+                captureBtn.disabled = false;
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                statusMessage.textContent = 'Error accessing camera. Please allow camera access and reload the page.';
+                statusMessage.style.color = 'var(--bs-danger)';
+            }
+        }
+        
+        // Capture image from video stream
+        function captureImage() {
+            const context = captureCanvas.getContext('2d');
+            captureCanvas.width = video.videoWidth;
+            captureCanvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+            
+            // Convert canvas to blob
+            captureCanvas.toBlob((blob) => {
+                // Create a File object from the Blob
+                const capturedImage = new File([blob], 'facial-login.jpg', { type: 'image/jpeg' });
+                
+                // Create a FileList-like object
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(capturedImage);
+                
+                // Set the file input's files
+                imageInput.files = dataTransfer.files;
+                
+                // Pause video
+                video.pause();
+                
+                // Show retake button, update status
+                retakeBtn.style.display = 'inline-block';
+                captureBtn.textContent = 'Submit';
+                statusMessage.textContent = 'Image captured. Click Submit to login or Retake for a new photo.';
+                
+                // Toggle camera button function
+                captureBtn.onclick = submitForm;
+            }, 'image/jpeg', 0.9);
+        }
+        
+        // Submit the form with the captured image
+        function submitForm() {
+            statusMessage.textContent = 'Processing... Please wait';
+            recognitionStatus.innerHTML = '<div class="spinner-border spinner-border-sm text-info" role="status"><span class="visually-hidden">Loading...</span></div> Authenticating...';
+            faceLoginForm.submit();
+        }
+        
+        // Reset the camera to take another picture
+        function resetCamera() {
+            video.play();
+            retakeBtn.style.display = 'none';
+            captureBtn.textContent = 'Capture & Login';
+            statusMessage.textContent = 'Camera ready. Look directly at the camera and click "Capture & Login"';
+            
+            // Reset capture button function
+            captureBtn.onclick = captureImage;
+        }
+        
+        // Initialize the camera when the page loads
+        window.addEventListener('DOMContentLoaded', initCamera);
+        
+        // Set button event handlers
+        captureBtn.onclick = captureImage;
+        retakeBtn.onclick = resetCamera;
+    </script>
+</body>
+</html>

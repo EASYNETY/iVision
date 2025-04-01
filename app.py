@@ -385,8 +385,12 @@ def register():
         logging.error(f"Error registering user: {e}")
         return jsonify({'success': False, 'message': 'Database error occurred during registration'}), 500
 
-@app.route('/identify', methods=['POST'])
+@app.route('/identify', methods=['GET', 'POST'])
 def identify():
+    # For GET requests, render the identify.html template
+    if request.method == 'GET':
+        return render_template('identify.html')
+    
     if 'image' not in request.files:
         return jsonify({'success': False, 'message': 'No image file provided'}), 400
     
@@ -446,8 +450,31 @@ def identify():
         
         # Record the identification attempt
         if match:
-            log_audit(match.user_id, 'identify', 'success', 
-                  f"User {match.full_name} identified", request.remote_addr)
+            # Determine if this is a login attempt or just identification
+            is_login = request.form.get('login', 'false').lower() == 'true'
+            
+            if is_login:
+                # Also update last login timestamp
+                match.last_login = datetime.utcnow()
+                db.session.commit()
+                
+                # Log the facial login
+                log_audit(match.id, 'facial_login', 'success', 
+                      f"User {match.full_name} logged in using facial recognition", request.remote_addr)
+                
+                # Login the user with Flask-Login
+                login_user(match, remember=True)
+                
+                # If this is a form submission (not API call)
+                is_form = request.content_type and 'multipart/form-data' in request.content_type
+                if is_form:
+                    flash(f'Welcome back, {match.full_name}! Logged in using facial recognition.', 'success')
+                    os.remove(file_path)  # Clean up
+                    return redirect(url_for('dashboard'))
+            else:
+                # Standard identification (not login)
+                log_audit(match.id, 'identify', 'success', 
+                      f"User {match.full_name} identified", request.remote_addr)
             
             # Get user's role
             role = Role.query.get(match.role_id) if match.role_id else None
@@ -469,18 +496,30 @@ def identify():
                 'username': match.username,
                 'role': role_name,
                 'sectors': sectors,
-                'is_active': match.is_active
+                'is_active': match.is_active,
+                'redirect_url': url_for('dashboard') if is_login else None
             }
             
             os.remove(file_path)  # Clean up
             return jsonify({
                 'success': True, 
-                'message': f'Match found: {match.full_name}',
+                'message': f'Match found: {match.full_name}' + (' (Logged in)' if is_login else ''),
                 'user': user_data
             }), 200
         else:
-            log_audit(None, 'identify', 'failure', 
-                   "No match found for identification attempt", request.remote_addr)
+            # Check if this was a login attempt
+            is_login = request.form.get('login', 'false').lower() == 'true'
+            log_action = 'facial_login_failure' if is_login else 'identify_failure'
+            
+            log_audit(None, log_action, 'failure', 
+                   "No match found for facial recognition attempt", request.remote_addr)
+            
+            # If this is a form submission for login, redirect to login page with message
+            is_form = request.content_type and 'multipart/form-data' in request.content_type
+            if is_form and is_login:
+                flash('Face not recognized. Please try again or log in with your credentials.', 'danger')
+                os.remove(file_path)  # Clean up
+                return redirect(url_for('login'))
             
             os.remove(file_path)  # Clean up
             return jsonify({'success': False, 'message': 'No match found'}), 404
