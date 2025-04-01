@@ -89,3 +89,183 @@ body {
 .alert {
     transition: all 0.3s ease-in-out;
 }
+
+/* Matrix-like Animation Effects */
+.matrix-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.matrix-content {
+    width: 80%;
+    max-width: 800px;
+    text-align: center;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    position: relative;
+    z-index: 2;
+}
+
+.matrix-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    text-shadow: 0 0 5px #00ff00;
+}
+
+.matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.matrix-cell {
+    height: 120px;
+    background-color: #000;
+    border: 1px solid #00ff00;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+}
+
+.matrix-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.7;
+    filter: grayscale(70%) hue-rotate(120deg);
+    transition: all 0.3s;
+}
+
+.matrix-cell.highlight img {
+    opacity: 1;
+    filter: none;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px #00ff00;
+}
+
+.matrix-cell .scan-line {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background-color: rgba(0, 255, 0, 0.7);
+    top: 0;
+    left: 0;
+    box-shadow: 0 0 5px #00ff00;
+    animation: scan 2s linear infinite;
+    z-index: 2;
+}
+
+.matrix-text {
+    height: 20px;
+    overflow: hidden;
+    margin: 10px 0;
+    font-size: 14px;
+    text-align: left;
+}
+
+.matrix-progress {
+    width: 100%;
+    height: 5px;
+    background-color: #003300;
+    margin: 20px 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.matrix-progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: #00ff00;
+    transition: width 0.2s linear;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+@keyframes scan {
+    0% {
+        top: 0;
+    }
+    100% {
+        top: 100%;
+    }
+}
+
+.binary-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    font-family: monospace;
+    color: rgba(0, 255, 0, 0.1);
+    font-size: 10px;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.result-container {
+    border: 1px solid #00ff00;
+    padding: 20px;
+    margin-top: 20px;
+    position: relative;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.result-container:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #000000 25%, transparent 25%, transparent 50%, #000000 50%, #000000 75%, transparent 75%, transparent);
+    background-size: 4px 4px;
+    opacity: 0.1;
+}
+
+.typewriter {
+    overflow: hidden;
+    border-right: .15em solid #00ff00;
+    white-space: nowrap;
+    margin: 0 auto;
+    letter-spacing: .15em;
+    animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
+}
+
+@keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+}
+
+@keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: #00ff00 }
+}
+
+.close-matrix {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: #00ff00;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 3;
+}
+
+.close-matrix:hover {
+    text-shadow: 0 0 10px #00ff00;
+}

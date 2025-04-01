@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Function to identify a face
+    // Function to identify a face with matrix animation
     function identifyFace() {
         if (!identifyImage.files || identifyImage.files.length === 0) {
             showAlert(identifyAlert, 'Please select an image', 'danger');
@@ -169,6 +169,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set button to loading state
         setButtonLoading(identifyBtn, true);
         
+        // Show matrix animation
+        showMatrixAnimation();
+        
         // Send request to server
         fetch('/identify', {
             method: 'POST',
@@ -176,20 +179,246 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
+            // Complete the matrix animation with the result
             if (data.success) {
-                showAlert(identifyAlert, data.message, 'success');
+                completeMatrixAnimation(data.user, true);
+                setTimeout(() => {
+                    showAlert(identifyAlert, data.message, 'success');
+                }, 3000); // delay showing the alert until animation is almost done
             } else {
-                showAlert(identifyAlert, data.message, 'warning');
+                completeMatrixAnimation(null, false);
+                setTimeout(() => {
+                    showAlert(identifyAlert, data.message, 'warning');
+                }, 3000);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showAlert(identifyAlert, 'An error occurred. Please try again.', 'danger');
+            completeMatrixAnimation(null, false);
+            setTimeout(() => {
+                showAlert(identifyAlert, 'An error occurred. Please try again.', 'danger');
+            }, 3000);
         })
         .finally(() => {
             setButtonLoading(identifyBtn, false);
         });
     }
+    
+    // Matrix animation functions
+    const matrixOverlay = document.getElementById('matrixOverlay');
+    const matrixGrid = document.getElementById('matrixGrid');
+    const matrixStatusText = document.getElementById('matrixStatusText');
+    const matrixProgressBar = document.getElementById('matrixProgressBar');
+    const matrixResult = document.getElementById('matrixResult');
+    const resultText = document.getElementById('resultText');
+    const matchDetails = document.getElementById('matchDetails');
+    const binaryBackground = document.getElementById('binaryBackground');
+    const closeMatrix = document.getElementById('closeMatrix');
+    
+    // Will store user images from the database
+    let userProfileImages = [];
+    
+    // Animation status messages
+    const statusMessages = [
+        'Initializing facial recognition vectors...',
+        'Extracting facial landmarks...',
+        'Calculating feature distances...',
+        'Normalizing biometric data...',
+        'Searching database for matches...',
+        'Running advanced recognition algorithms...',
+        'Verifying identity matches...',
+        'Cross-referencing with known patterns...',
+        'Finalizing analysis results...'
+    ];
+    
+    function showMatrixAnimation() {
+        // Clear previous animation state
+        matrixGrid.innerHTML = '';
+        matrixProgressBar.style.width = '0%';
+        matrixResult.style.display = 'none';
+        
+        // Generate binary background for matrix effect
+        generateBinaryBackground();
+        
+        // Show the overlay with a loading message
+        matrixOverlay.style.display = 'flex';
+        matrixStatusText.textContent = 'Loading database imagery...';
+        
+        // Fetch user images for the animation
+        fetchUserImagesForMatrix().then(() => {
+            // Create grid cells with actual user images or fallback images
+            createMatrixGrid();
+            
+            // Start progress animation
+            runMatrixAnimation();
+        });
+    }
+    
+    // Function to fetch user images for the matrix animation
+    function fetchUserImagesForMatrix() {
+        return fetch('/users?include_images=true')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.users && data.users.length > 0) {
+                    // Extract image URLs from the users data
+                    userProfileImages = data.users
+                        .filter(user => user.image_url)
+                        .map(user => user.image_url);
+                    
+                    // If we don't have enough images, add some fallback images
+                    if (userProfileImages.length < 4) {
+                        const fallbackImages = [
+                            '/static/img/placeholders/face1.svg',
+                            '/static/img/placeholders/face2.svg',
+                            '/static/img/placeholders/face3.svg',
+                            '/static/img/placeholders/face4.svg'
+                        ];
+                        
+                        // Add fallback images to make sure we have at least 4 images
+                        userProfileImages = [...userProfileImages, ...fallbackImages.slice(0, 4 - userProfileImages.length)];
+                    }
+                } else {
+                    // Use fallback images if no users are available
+                    userProfileImages = [
+                        '/static/img/placeholders/face1.svg',
+                        '/static/img/placeholders/face2.svg',
+                        '/static/img/placeholders/face3.svg', 
+                        '/static/img/placeholders/face4.svg',
+                        '/static/img/placeholders/face5.svg',
+                        '/static/img/placeholders/face6.svg'
+                    ];
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user images:', error);
+                // Use fallback images in case of an error
+                userProfileImages = [
+                    '/static/img/placeholders/face1.svg',
+                    '/static/img/placeholders/face2.svg',
+                    '/static/img/placeholders/face3.svg',
+                    '/static/img/placeholders/face4.svg'
+                ];
+            });
+    }
+    
+    // Function to create the matrix grid cells
+    function createMatrixGrid() {
+        // Create grid cells with images
+        for (let i = 0; i < 12; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'matrix-cell';
+            
+            const img = document.createElement('img');
+            img.src = userProfileImages[i % userProfileImages.length];
+            img.alt = 'Face image';
+            
+            const scanLine = document.createElement('div');
+            scanLine.className = 'scan-line';
+            
+            cell.appendChild(img);
+            cell.appendChild(scanLine);
+            matrixGrid.appendChild(cell);
+        }
+    }
+    
+    function runMatrixAnimation() {
+        let progress = 0;
+        let messageIndex = 0;
+        
+        // Update status message periodically
+        matrixStatusText.textContent = statusMessages[0];
+        
+        const messageInterval = setInterval(() => {
+            messageIndex = (messageIndex + 1) % statusMessages.length;
+            matrixStatusText.textContent = statusMessages[messageIndex];
+        }, 1500);
+        
+        // Highlight random cells to simulate processing
+        const highlightInterval = setInterval(() => {
+            // Remove all highlights
+            document.querySelectorAll('.matrix-cell.highlight').forEach(cell => {
+                cell.classList.remove('highlight');
+            });
+            
+            // Add new random highlights
+            const cells = document.querySelectorAll('.matrix-cell');
+            const randomCell1 = cells[Math.floor(Math.random() * cells.length)];
+            const randomCell2 = cells[Math.floor(Math.random() * cells.length)];
+            
+            randomCell1.classList.add('highlight');
+            randomCell2.classList.add('highlight');
+        }, 400);
+        
+        // Update progress bar
+        const progressInterval = setInterval(() => {
+            progress += 1;
+            matrixProgressBar.style.width = `${progress}%`;
+            
+            // If we've reached 100%, clear the intervals
+            if (progress >= 100) {
+                clearInterval(messageInterval);
+                clearInterval(highlightInterval);
+                clearInterval(progressInterval);
+            }
+        }, 100);
+    }
+    
+    function completeMatrixAnimation(userData, isSuccess) {
+        // Ensure progress bar is complete
+        matrixProgressBar.style.width = '100%';
+        
+        // Show result section
+        matrixResult.style.display = 'block';
+        
+        if (isSuccess && userData) {
+            resultText.textContent = 'MATCH FOUND';
+            resultText.style.color = '#00ff00';
+            
+            // Display user details
+            matchDetails.innerHTML = `
+                <div class="mt-3">
+                    <p><strong>Name:</strong> ${userData.full_name}</p>
+                    <p><strong>ID:</strong> ${userData.user_id}</p>
+                    <p class="text-success">Identity verification successful</p>
+                </div>
+            `;
+        } else {
+            resultText.textContent = 'NO MATCH FOUND';
+            resultText.style.color = '#ff3333';
+            
+            matchDetails.innerHTML = `
+                <div class="mt-3">
+                    <p class="text-danger">Identity verification failed</p>
+                    <p>No matching records found in the database.</p>
+                </div>
+            `;
+        }
+        
+        // Hide matrix overlay after a delay
+        setTimeout(() => {
+            hideMatrixAnimation();
+        }, 5000);
+    }
+    
+    function hideMatrixAnimation() {
+        matrixOverlay.style.display = 'none';
+    }
+    
+    function generateBinaryBackground() {
+        binaryBackground.innerHTML = '';
+        const chars = '01';
+        let html = '';
+        
+        for (let i = 0; i < 1000; i++) {
+            html += chars.charAt(Math.floor(Math.random() * chars.length));
+            if (i % 50 === 0) html += '<br>';
+        }
+        
+        binaryBackground.innerHTML = html;
+    }
+    
+    // Add event listener to close button
+    closeMatrix.addEventListener('click', hideMatrixAnimation);
     
     // Function to fetch registered users
     function fetchUsers() {

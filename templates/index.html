@@ -268,6 +268,31 @@
         </div>
     </div>
 
+    <!-- Matrix Overlay for Advanced Animation Effect -->
+    <div class="matrix-overlay" id="matrixOverlay">
+        <div class="binary-background" id="binaryBackground"></div>
+        <div class="close-matrix" id="closeMatrix">×</div>
+        
+        <div class="matrix-content">
+            <div class="matrix-title">Advanced Facial Recognition Analysis</div>
+            
+            <div class="matrix-text" id="matrixStatusText">Initializing facial recognition vectors...</div>
+            
+            <div class="matrix-progress">
+                <div class="matrix-progress-bar" id="matrixProgressBar"></div>
+            </div>
+            
+            <div class="matrix-grid" id="matrixGrid">
+                <!-- Grid cells will be dynamically added -->
+            </div>
+            
+            <div class="result-container" id="matrixResult" style="display: none;">
+                <h4 class="typewriter" id="resultText">Identification Complete</h4>
+                <div id="matchDetails"></div>
+            </div>
+        </div>
+    </div>
+
     <footer class="footer mt-auto py-3 bg-dark">
         <div class="container text-center">
             <span class="text-muted">Facial Recognition System | Powered by OpenCV</span>

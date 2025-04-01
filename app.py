@@ -2,7 +2,7 @@ import os
 import logging
 import cv2
 import numpy as np
-from flask import Flask, request, render_template, jsonify, flash, redirect, url_for, session
+from flask import Flask, request, render_template, jsonify, flash, redirect, url_for, session, send_from_directory
 import uuid
 from datetime import datetime
 from werkzeug.utils import secure_filename
@@ -279,13 +279,28 @@ def identify():
 @app.route('/users', methods=['GET'])
 def list_users():
     try:
+        # Check if we need to include image paths (for matrix animation)
+        include_images = request.args.get('include_images') == 'true'
+        
         users = User.query.all()
-        user_list = [{
-            "id": user.user_id,
-            "name": user.full_name,
-            "email": user.email,
-            "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None
-        } for user in users]
+        user_list = []
+        
+        for user in users:
+            user_data = {
+                "id": user.user_id,
+                "name": user.full_name,
+                "email": user.email,
+                "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None
+            }
+            
+            # Include image paths if requested (for matrix animation)
+            if include_images and user.image_path:
+                # Get the filename part of the path
+                filename = os.path.basename(user.image_path)
+                # Create a URL for the image using our uploaded_file route
+                user_data["image_url"] = url_for('uploaded_file', filename=filename)
+            
+            user_list.append(user_data)
         
         return jsonify({'success': True, 'users': user_list})
     except Exception as e:
@@ -351,6 +366,10 @@ def get_user(user_id):
         else:
             flash('An error occurred while fetching user details', 'danger')
             return redirect(url_for('index'))
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/reset', methods=['POST'])
 def reset_database():

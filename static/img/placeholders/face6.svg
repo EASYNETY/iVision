@@ -1,0 +1,18 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle for the face -->
+  <circle cx="100" cy="100" r="90" fill="#38A169"/>
+  
+  <!-- Eyes -->
+  <circle cx="70" cy="85" r="12" fill="#C6F6D5"/>
+  <circle cx="130" cy="85" r="12" fill="#C6F6D5"/>
+  
+  <!-- Pupils -->
+  <circle cx="70" cy="85" r="6" fill="#22543D"/>
+  <circle cx="130" cy="85" r="6" fill="#22543D"/>
+  
+  <!-- Nose -->
+  <path d="M100 95 L90 115 L110 115 Z" fill="#68D391"/>
+  
+  <!-- Mouth -->
+  <path d="M75 125 Q100 145 125 125" stroke="#C6F6D5" stroke-width="4" fill="none"/>
+</svg>

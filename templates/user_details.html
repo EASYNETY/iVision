@@ -36,7 +36,7 @@
                             <div class="col-md-4 text-center mb-4">
                                 {% if user.image_path %}
                                 <div class="user-image-container mb-2">
-                                    <img src="{{ url_for('static', filename='user_images/' + user.image_path.split('/')[-1]) }}" 
+                                    <img src="{{ url_for('uploaded_file', filename=user.image_path.split('/')[-1]) }}" 
                                          class="img-fluid rounded border" alt="User Image">
                                 </div>
                                 {% else %}
