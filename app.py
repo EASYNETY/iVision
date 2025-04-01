@@ -2,13 +2,17 @@ import os
 import logging
 import cv2
 import numpy as np
-from flask import Flask, request, render_template, jsonify, flash, redirect, url_for, session, send_from_directory
+from flask import Flask, request, render_template, jsonify, flash, redirect, url_for, session, send_from_directory, abort
 import uuid
 from datetime import datetime
 from werkzeug.utils import secure_filename
+from urllib.parse import urlparse as url_parse
 from util.face_util import detect_faces, get_face_encoding, compare_faces
-from werkzeug.security import generate_password_hash
-from models import db, User, AuditLog
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from functools import wraps
+from models import db, User, AuditLog, Role, Sector, Permission, RolePermission, UserSector
+from models import JusticeRecord, BankingRecord, HumanitarianRecord, VotingRecord, IdCardRecord, TransportationRecord
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -27,6 +31,18 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # Initialize the database
 db.init_app(app)
 
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
+
+# User loader for Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 # Create upload directory if it doesn't exist
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -36,9 +52,132 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB limit
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
+# Role-based access control decorator
+def role_required(role_name):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
+            
+            # Get the user's role
+            role = Role.query.get(current_user.role_id)
+            if not role or role.name != role_name:
+                flash(f'You need {role_name} permissions to access this page.', 'danger')
+                return redirect(url_for('index'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+# Permission-based access control decorator
+def permission_required(permission_name):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
+            
+            # Check if user has the required permission
+            if not current_user.has_permission(permission_name):
+                flash(f'You do not have permission to access this feature.', 'danger')
+                return redirect(url_for('index'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+# Sector access control decorator
+def sector_access_required(sector_name):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
+            
+            # Check if user has access to the required sector
+            if not current_user.has_sector_access(sector_name):
+                flash(f'You do not have access to the {sector_name} sector.', 'danger')
+                return redirect(url_for('index'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
 # Create database tables
 with app.app_context():
     db.create_all()
+    
+    # Create default roles if they don't exist
+    if not Role.query.filter_by(name='Agency Admin').first():
+        admin_role = Role(name='Agency Admin', description='Full access to all data and management options within their sector')
+        db.session.add(admin_role)
+        
+    if not Role.query.filter_by(name='Agency User').first():
+        user_role = Role(name='Agency User', description='Limited access to view, add, update, and delete relevant user data based on their sector')
+        db.session.add(user_role)
+        
+    if not Role.query.filter_by(name='Viewer').first():
+        viewer_role = Role(name='Viewer', description='Read-only access to observe data without ability to make modifications')
+        db.session.add(viewer_role)
+    
+    # Create default sectors if they don't exist
+    default_sectors = ['Justice', 'Banking', 'Humanitarian', 'Voting', 'ID Card', 'Transportation']
+    for sector_name in default_sectors:
+        if not Sector.query.filter_by(name=sector_name).first():
+            sector = Sector(name=sector_name, description=f'{sector_name} sector module')
+            db.session.add(sector)
+    
+    # Create default permissions if they don't exist
+    default_permissions = [
+        ('create_user', 'Create new user records'),
+        ('view_user', 'View user records'),
+        ('edit_user', 'Edit user records'),
+        ('delete_user', 'Delete user records'),
+        ('reset_database', 'Reset the entire database'),
+        ('manage_roles', 'Assign and manage user roles'),
+        ('view_audit_logs', 'View system audit logs'),
+        ('view_statistics', 'View system statistics'),
+    ]
+    
+    for perm_name, perm_desc in default_permissions:
+        if not Permission.query.filter_by(name=perm_name).first():
+            permission = Permission(name=perm_name, description=perm_desc)
+            db.session.add(permission)
+    
+    db.session.commit()
+    
+    # Assign permissions to roles
+    admin_role = Role.query.filter_by(name='Agency Admin').first()
+    user_role = Role.query.filter_by(name='Agency User').first()
+    viewer_role = Role.query.filter_by(name='Viewer').first()
+    
+    # Admin has all permissions
+    if admin_role:
+        for permission in Permission.query.all():
+            if not RolePermission.query.filter_by(role_id=admin_role.id, permission_id=permission.id).first():
+                role_perm = RolePermission(role_id=admin_role.id, permission_id=permission.id)
+                db.session.add(role_perm)
+    
+    # Agency User has limited permissions
+    if user_role:
+        user_permissions = ['create_user', 'view_user', 'edit_user', 'view_statistics']
+        for perm_name in user_permissions:
+            permission = Permission.query.filter_by(name=perm_name).first()
+            if permission and not RolePermission.query.filter_by(role_id=user_role.id, permission_id=permission.id).first():
+                role_perm = RolePermission(role_id=user_role.id, permission_id=permission.id)
+                db.session.add(role_perm)
+    
+    # Viewer has only view permissions
+    if viewer_role:
+        viewer_permissions = ['view_user']
+        for perm_name in viewer_permissions:
+            permission = Permission.query.filter_by(name=perm_name).first()
+            if permission and not RolePermission.query.filter_by(role_id=viewer_role.id, permission_id=permission.id).first():
+                role_perm = RolePermission(role_id=viewer_role.id, permission_id=permission.id)
+                db.session.add(role_perm)
+    
+    db.session.commit()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -79,6 +218,12 @@ def register():
     nationality = data.get('nationality', '').strip()
     phone_number = data.get('phone_number', '').strip()
     address = data.get('address', '').strip()
+    
+    # RBAC specific parameters
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    role_name = data.get('role', 'Viewer').strip()  # Default to Viewer if no role specified
+    sectors = data.getlist('sectors')  # List of sectors this user has access to
     # Convert string values to boolean
     has_biometric_consent_val = data.get('has_biometric_consent', 'false')
     has_data_storage_consent_val = data.get('has_data_storage_consent', 'false')
@@ -145,10 +290,30 @@ def register():
         if email and User.query.filter_by(email=email).first():
             os.remove(file_path)
             return jsonify({'success': False, 'message': 'A user with this email already exists'}), 400
+            
+        # Check if username already exists (if provided)
+        if username and User.query.filter_by(username=username).first():
+            os.remove(file_path)
+            return jsonify({'success': False, 'message': f'Username {username} is already taken'}), 400
+            
+        # For RBAC, check if a username and password were provided 
+        if not username and not password:
+            # If neither is provided, this might be a frontend form without RBAC fields yet
+            # We can auto-generate a username and a simple password
+            username = f"user_{full_name.lower().replace(' ', '_')}"
+            password = str(uuid.uuid4())[:8]  # Generate a simple 8-character password
+            logging.warning(f"Auto-generated username ({username}) and password for user without login credentials")
         
+        # Get the role object
+        role = Role.query.filter_by(name=role_name).first()
+        if not role:
+            # Default to Viewer if the specified role doesn't exist
+            role = Role.query.filter_by(name='Viewer').first()
+            
         # Create new user
         new_user = User(
             user_id=unique_id,
+            username=username,
             full_name=full_name,
             dob=dob,
             gender=gender,
@@ -161,9 +326,15 @@ def register():
             has_data_storage_consent=has_data_storage_consent,
             terms_accepted=terms_accepted,
             ip_address=request.remote_addr,
-            device_type=request.user_agent.platform if request.user_agent else None
+            device_type=request.user_agent.platform if request.user_agent else None,
+            role_id=role.id if role else None,
+            is_active=True
         )
         
+        # Set password if provided
+        if password:
+            new_user.set_password(password)
+            
         # Set the facial encoding
         new_user.set_facial_embedding(face_encoding)
         
@@ -171,15 +342,31 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
-        # Log the registration
-        log_audit(unique_id, 'register', 'success', f"User {full_name} registered", request.remote_addr)
+        # Add sector associations
+        if sectors:
+            for sector_name in sectors:
+                sector = Sector.query.filter_by(name=sector_name).first()
+                if sector:
+                    user_sector = UserSector(user_id=new_user.id, sector_id=sector.id)
+                    db.session.add(user_sector)
+            
+            db.session.commit()
         
-        logging.debug(f"Registered user: {full_name}")
+        # Log the registration with role information
+        log_audit(new_user.id, 'register', 'success', 
+                f"User {full_name} registered with role {role_name if role else 'None'}", 
+                request.remote_addr)
         
+        logging.debug(f"Registered user: {full_name} with role {role_name if role else 'None'}")
+        
+        # Return RBAC information along with user details
         return jsonify({
             'success': True, 
             'message': f'User {full_name} registered successfully!',
-            'user_id': unique_id
+            'user_id': unique_id,
+            'username': username,
+            'role': role_name if role else 'None',
+            'sectors': sectors
         }), 200
         
     except Exception as e:
@@ -252,10 +439,27 @@ def identify():
             log_audit(match.user_id, 'identify', 'success', 
                   f"User {match.full_name} identified", request.remote_addr)
             
-            # Return user data
+            # Get user's role
+            role = Role.query.get(match.role_id) if match.role_id else None
+            role_name = role.name if role else "No Role Assigned"
+            
+            # Get sectors the user has access to
+            user_sectors = UserSector.query.filter_by(user_id=match.id).all()
+            sectors = []
+            
+            for user_sector in user_sectors:
+                sector = Sector.query.get(user_sector.sector_id)
+                if sector:
+                    sectors.append(sector.name)
+            
+            # Return user data with RBAC information
             user_data = {
                 'full_name': match.full_name,
-                'user_id': match.user_id
+                'user_id': match.user_id,
+                'username': match.username,
+                'role': role_name,
+                'sectors': sectors,
+                'is_active': match.is_active
             }
             
             os.remove(file_path)  # Clean up
@@ -286,11 +490,29 @@ def list_users():
         user_list = []
         
         for user in users:
+            # Get user's role
+            role = Role.query.get(user.role_id) if user.role_id else None
+            role_name = role.name if role else "No Role Assigned"
+            
+            # Get sectors the user has access to
+            user_sectors = UserSector.query.filter_by(user_id=user.id).all()
+            sectors = []
+            
+            for user_sector in user_sectors:
+                sector = Sector.query.get(user_sector.sector_id)
+                if sector:
+                    sectors.append(sector.name)
+            
             user_data = {
                 "id": user.user_id,
+                "username": user.username,
                 "name": user.full_name,
                 "email": user.email,
-                "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None
+                "role": role_name,
+                "sectors": sectors,
+                "is_active": user.is_active,
+                "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None,
+                "last_login": user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else None
             }
             
             # Include image paths if requested (for matrix animation)
@@ -317,8 +539,22 @@ def get_user(user_id):
             if not user:
                 return jsonify({'success': False, 'message': 'User not found'}), 404
             
+            # Get user's role
+            role = Role.query.get(user.role_id) if user.role_id else None
+            role_name = role.name if role else "No Role Assigned"
+            
+            # Get sectors the user has access to
+            user_sectors = UserSector.query.filter_by(user_id=user.id).all()
+            sectors = []
+            
+            for user_sector in user_sectors:
+                sector = Sector.query.get(user_sector.sector_id)
+                if sector:
+                    sectors.append(sector.name)
+                    
             user_data = {
                 "id": user.user_id,
+                "username": user.username,
                 "full_name": user.full_name,
                 "email": user.email,
                 "phone_number": user.phone_number,
@@ -326,7 +562,11 @@ def get_user(user_id):
                 "gender": user.gender,
                 "nationality": user.nationality,
                 "address": user.address,
+                "role": role_name,
+                "sectors": sectors,
+                "is_active": user.is_active,
                 "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None,
+                "last_login": user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else None,
                 "last_identification": user.last_identification.strftime('%Y-%m-%d %H:%M:%S') if user.last_identification else None
             }
             
@@ -339,9 +579,23 @@ def get_user(user_id):
                 flash('User not found', 'danger')
                 return redirect(url_for('index'))
             
+            # Get user's role
+            role = Role.query.get(user.role_id) if user.role_id else None
+            role_name = role.name if role else "No Role Assigned"
+            
+            # Get sectors the user has access to
+            user_sectors = UserSector.query.filter_by(user_id=user.id).all()
+            sectors = []
+            
+            for user_sector in user_sectors:
+                sector = Sector.query.get(user_sector.sector_id)
+                if sector:
+                    sectors.append(sector.name)
+            
             # Format the date fields for display
             user_data = {
                 "id": user.user_id,
+                "username": user.username,
                 "full_name": user.full_name,
                 "email": user.email,
                 "phone_number": user.phone_number,
@@ -350,7 +604,11 @@ def get_user(user_id):
                 "nationality": user.nationality,
                 "address": user.address,
                 "image_path": user.image_path,
+                "role": role_name,
+                "sectors": sectors,
+                "is_active": user.is_active,
                 "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None,
+                "last_login": user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else None,
                 "last_identification": user.last_identification.strftime('%Y-%m-%d %H:%M:%S') if user.last_identification else None
             }
             
@@ -418,6 +676,199 @@ def request_entity_too_large(error):
 @app.errorhandler(500)
 def internal_server_error(error):
     return jsonify({'success': False, 'message': 'Internal server error'}), 500
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        remember = 'remember' in request.form
+        
+        if not username or not password:
+            flash('Please provide both username and password', 'danger')
+            return render_template('login.html')
+        
+        # First check if there's a user with this username
+        user = User.query.filter_by(username=username).first()
+        
+        # If not found by username, try email
+        if not user:
+            user = User.query.filter_by(email=username).first()
+        
+        if user and user.check_password(password):
+            # Update last login timestamp
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            
+            # Log the successful login
+            log_audit(user.id, 'login', 'success', 
+                   f"User {user.full_name} logged in", request.remote_addr)
+            
+            # Log the user in
+            login_user(user, remember=remember)
+            
+            # Redirect to the page they were trying to access
+            next_page = request.args.get('next')
+            if not next_page or url_parse(next_page).netloc != '':
+                next_page = url_for('dashboard')
+                
+            return redirect(next_page)
+        else:
+            # Log the failed login attempt
+            log_audit(None, 'login', 'failure',
+                   f"Failed login attempt for username: {username}", request.remote_addr)
+                   
+            flash('Invalid username or password', 'danger')
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    # Log the logout
+    if current_user.is_authenticated:
+        log_audit(current_user.id, 'logout', 'success',
+               f"User {current_user.full_name} logged out", request.remote_addr)
+    
+    logout_user()
+    flash('You have been logged out', 'info')
+    return redirect(url_for('index'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    # Get the user's role
+    role = Role.query.get(current_user.role_id) if current_user.role_id else None
+    role_name = role.name if role else "No Role Assigned"
+    
+    # Get sectors the user has access to
+    user_sectors = UserSector.query.filter_by(user_id=current_user.id).all()
+    sectors = []
+    
+    for user_sector in user_sectors:
+        sector = Sector.query.get(user_sector.sector_id)
+        if sector:
+            sectors.append(sector.name)
+    
+    # Get audit logs for this user
+    recent_logs = AuditLog.query.filter_by(user_id=current_user.id).order_by(AuditLog.timestamp.desc()).limit(5).all()
+    
+    return render_template('dashboard.html', 
+                          user=current_user, 
+                          role=role_name, 
+                          sectors=sectors,
+                          recent_logs=recent_logs)
+
+# Admin routes
+@app.route('/admin')
+@login_required
+@role_required('Agency Admin')
+def admin_dashboard():
+    # Get all users with their roles
+    users = User.query.all()
+    roles = Role.query.all()
+    sectors = Sector.query.all()
+    
+    return render_template('admin_dashboard.html', 
+                          users=users, 
+                          roles=roles,
+                          sectors=sectors)
+
+@app.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@permission_required('manage_roles')
+def edit_user_role(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        role_id = request.form.get('role_id', type=int)
+        sector_ids = request.form.getlist('sector_ids', type=int)
+        
+        # Update role
+        old_role_id = user.role_id
+        user.role_id = role_id
+        
+        # Update sectors - first remove all existing associations
+        UserSector.query.filter_by(user_id=user.id).delete()
+        
+        # Add new sector associations
+        for sector_id in sector_ids:
+            user_sector = UserSector(user_id=user.id, sector_id=sector_id)
+            db.session.add(user_sector)
+            
+        # Update the database
+        db.session.commit()
+        
+        # Log the role change
+        log_audit(current_user.id, 'update_role', 'success', 
+               f"Changed {user.full_name}'s role from {old_role_id} to {role_id}", 
+               request.remote_addr)
+        
+        flash(f'Updated {user.full_name}\'s role and sector access', 'success')
+        return redirect(url_for('admin_dashboard'))
+    
+    roles = Role.query.all()
+    sectors = Sector.query.all()
+    user_sectors = [us.sector_id for us in UserSector.query.filter_by(user_id=user.id).all()]
+    
+    return render_template('edit_user_role.html', 
+                          user=user, 
+                          roles=roles,
+                          sectors=sectors,
+                          user_sectors=user_sectors)
+
+# Sector-specific routes
+@app.route('/sector/<sector_name>')
+@login_required
+def sector_dashboard(sector_name):
+    # Check sector access directly in the route
+    if not current_user.has_sector_access(sector_name):
+        flash(f'You do not have access to the {sector_name} sector.', 'danger')
+        return redirect(url_for('index'))
+    # Get the sector
+    sector = Sector.query.filter_by(name=sector_name).first_or_404()
+    
+    # Get users associated with this sector
+    user_sectors = UserSector.query.filter_by(sector_id=sector.id).all()
+    user_ids = [us.user_id for us in user_sectors]
+    users = User.query.filter(User.id.in_(user_ids)).all() if user_ids else []
+    
+    if sector_name == 'Justice':
+        # Get justice records
+        records = JusticeRecord.query.all()
+        return render_template('sectors/justice.html', sector=sector, users=users, records=records)
+    
+    elif sector_name == 'Banking':
+        # Get banking records
+        records = BankingRecord.query.all()
+        return render_template('sectors/banking.html', sector=sector, users=users, records=records)
+    
+    elif sector_name == 'Humanitarian':
+        # Get humanitarian records
+        records = HumanitarianRecord.query.all()
+        return render_template('sectors/humanitarian.html', sector=sector, users=users, records=records)
+    
+    elif sector_name == 'Voting':
+        # Get voting records
+        records = VotingRecord.query.all()
+        return render_template('sectors/voting.html', sector=sector, users=users, records=records)
+    
+    elif sector_name == 'ID Card':
+        # Get ID card records
+        records = IdCardRecord.query.all()
+        return render_template('sectors/id_card.html', sector=sector, users=users, records=records)
+    
+    elif sector_name == 'Transportation':
+        # Get transportation records
+        records = TransportationRecord.query.all()
+        return render_template('sectors/transportation.html', sector=sector, users=users, records=records)
+    
+    # Generic sector view for any new sectors
+    return render_template('sectors/generic.html', sector=sector, users=users)
 
 # Print database URL (for debugging)
 logging.debug(f"Using database URL: {app.config['SQLALCHEMY_DATABASE_URI'].split('@')[0]}@...hidden...")

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Facial Recognition System</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">Facial Recognition System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('dashboard') }}">Dashboard</a>
+                    </li>
+                    {% if user.has_permission('view_user') %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_users') }}">Users</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if role == 'Agency Admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Admin Panel</a>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- Sector navigation -->
+                    {% if sectors %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="sectorsDropdown" role="button" data-bs-toggle="dropdown">
+                            Sectors
+                        </a>
+                        <ul class="dropdown-menu">
+                            {% for sector in sectors %}
+                            <li><a class="dropdown-item" href="{{ url_for('sector_dashboard', sector_name=sector) }}">{{ sector }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            {{ user.full_name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('get_user', user_id=user.user_id) }}">Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h1>Welcome, {{ user.full_name }}</h1>
+                <p class="lead">Role: <span class="badge bg-info">{{ role }}</span></p>
+                
+                {% if sectors %}
+                <p>You have access to the following sectors:</p>
+                <div class="mb-3">
+                    {% for sector in sectors %}
+                    <a href="{{ url_for('sector_dashboard', sector_name=sector) }}" class="btn btn-outline-primary me-2 mb-2">{{ sector }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-center">
+                {% if user.image_path %}
+                <img src="{{ url_for('uploaded_file', filename=user.image_path.split('/')[-1]) }}" 
+                     alt="{{ user.full_name }}" class="img-fluid rounded-circle" style="max-width: 150px;">
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quick Stats Row -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Last Login</h5>
+                        <p class="card-text">{{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'Never' }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Last Identification</h5>
+                        <p class="card-text">{{ user.last_identification.strftime('%Y-%m-%d %H:%M:%S') if user.last_identification else 'Never' }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Account Status</h5>
+                        <p class="card-text">
+                            {% if user.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Recent Activity</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_logs %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Action</th>
+                                        <th>Status</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in recent_logs %}
+                                    <tr>
+                                        <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        <td>{{ log.action }}</td>
+                                        <td>
+                                            {% if log.status == 'success' %}
+                                            <span class="badge bg-success">Success</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Failure</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ log.details }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p>No recent activity found.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
