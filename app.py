@@ -661,8 +661,10 @@ def list_users_html():
             # For debugging
             logging.debug(f"Processing user with id={user.id}, user_id={user.user_id}")
             
+            # Important: store numeric ID for edit_user_role
             user_data = {
-                "id": user.user_id,
+                "id": user.id,  # Use the numeric ID for URLs
+                "uuid": user.user_id,  # Keep the UUID separately if needed
                 "username": user.username,
                 "name": user.full_name,
                 "email": user.email,
