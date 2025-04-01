@@ -511,11 +511,23 @@ def identify():
             }
             
             os.remove(file_path)  # Clean up
-            return jsonify({
-                'success': True, 
-                'message': f'Match found: {match.full_name}' + (' (Logged in)' if is_login else ''),
-                'user': user_data
-            }), 200
+            
+            # Check if this is a browser request (HTML) or API call (JSON)
+            is_html_request = request.headers.get('Accept', '').find('text/html') >= 0 and 'application/json' not in request.headers.get('Accept', '')
+            
+            if is_html_request:
+                flash(f'Match found: {match.full_name}' + (' (Logged in)' if is_login else ''), 'success')
+                if is_login:
+                    return redirect(url_for('dashboard'))
+                else:
+                    return render_template('user_details.html', user=user_data, match_result=True)
+            else:
+                # API call - return JSON as before
+                return jsonify({
+                    'success': True, 
+                    'message': f'Match found: {match.full_name}' + (' (Logged in)' if is_login else ''),
+                    'user': user_data
+                }), 200
         else:
             # Check if this was a login attempt
             is_login = request.form.get('login', 'false').lower() == 'true'
@@ -532,7 +544,16 @@ def identify():
                 return redirect(url_for('login'))
             
             os.remove(file_path)  # Clean up
-            return jsonify({'success': False, 'message': 'No match found'}), 404
+            
+            # Check if this is a browser request (HTML) or API call (JSON)
+            is_html_request = request.headers.get('Accept', '').find('text/html') >= 0 and 'application/json' not in request.headers.get('Accept', '')
+            
+            if is_html_request:
+                flash('No match found. This person is not registered in the system.', 'warning')
+                return redirect(url_for('identify'))
+            else:
+                # API call - return JSON as before
+                return jsonify({'success': False, 'message': 'No match found'}), 404
             
     except Exception as e:
         os.remove(file_path)  # Clean up
@@ -602,14 +623,18 @@ def list_users_html():
             role = Role.query.get(user.role_id) if user.role_id else None
             role_name = role.name if role else "No Role Assigned"
             
-            # Get sectors the user has access to
-            user_sectors = UserSector.query.filter_by(user_id=user.id).all()
-            sectors = []
-            
-            for user_sector in user_sectors:
-                sector = Sector.query.get(user_sector.sector_id)
-                if sector:
-                    sectors.append(sector.name)
+            # Get sectors the user has access to - wrap in try/except to prevent ID conversion errors
+            try:
+                user_sectors = UserSector.query.filter_by(user_id=user.id).all()
+                sectors = []
+                
+                for user_sector in user_sectors:
+                    sector = Sector.query.get(user_sector.sector_id)
+                    if sector:
+                        sectors.append(sector.name)
+            except Exception as sector_error:
+                logging.error(f"Error getting sectors for user {user.id}: {sector_error}")
+                sectors = []
             
             user_data = {
                 "id": user.user_id,
@@ -855,7 +880,14 @@ def request_entity_too_large(error):
 
 @app.errorhandler(500)
 def internal_server_error(error):
-    return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    # Check if this is a browser request (HTML) or API call (JSON)
+    is_html_request = request.headers.get('Accept', '').find('text/html') >= 0 and 'application/json' not in request.headers.get('Accept', '')
+    
+    if is_html_request:
+        flash('An internal server error occurred. Please try again or contact support.', 'danger')
+        return redirect(url_for('index'))
+    else:
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
 
 # Authentication routes
 @app.route('/login', methods=['GET', 'POST'])

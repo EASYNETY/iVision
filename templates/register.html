@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register New User - Facial Recognition System</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        #preview {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            border: 2px dashed #5c5f66;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #888;
+            background-color: #1e1e1e;
+            position: relative;
+        }
+
+        #result-preview {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            object-fit: cover;
+            display: none;
+        }
+
+        #webcam {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            display: none;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            background: 
+                linear-gradient(to right, #00ff00 4px, transparent 4px) 0 0,
+                linear-gradient(to right, #00ff00 4px, transparent 4px) 0 100%,
+                linear-gradient(to left, #00ff00 4px, transparent 4px) 100% 0,
+                linear-gradient(to left, #00ff00 4px, transparent 4px) 100% 100%,
+                linear-gradient(to bottom, #00ff00 4px, transparent 4px) 0 0,
+                linear-gradient(to bottom, #00ff00 4px, transparent 4px) 100% 0,
+                linear-gradient(to top, #00ff00 4px, transparent 4px) 0 100%,
+                linear-gradient(to top, #00ff00 4px, transparent 4px) 100% 100%;
+            background-repeat: no-repeat;
+            background-size: 20px 20px;
+            display: none;
+        }
+
+        .face-template {
+            position: absolute;
+            width: 60%;
+            height: 80%;
+            top: 10%;
+            left: 20%;
+            border: 2px dashed rgba(0, 255, 0, 0.5);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            opacity: 0.5;
+            display: none;
+        }
+
+        .matrix-effect {
+            font-family: monospace;
+            color: #00ff00;
+            font-size: 12px;
+            background-color: #000;
+            overflow: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .sector-checkbox {
+            margin-right: 1rem;
+        }
+
+        #loading {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .upload-section, .webcam-section, .result-section {
+            display: none;
+        }
+
+        .btn-capture {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-camera"></i> Facial Recognition System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/register">Register</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/identify">Identify</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/users/html">Users</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/audit_logs/html">Audit Logs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="loading">
+        <div class="spinner-border text-light mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-light">Processing... Please wait</p>
+    </div>
+
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Register New User</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Mode Selection -->
+                        <div class="mb-4 text-center">
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="input-mode" id="webcam-mode" autocomplete="off" checked>
+                                <label class="btn btn-outline-secondary" for="webcam-mode">
+                                    <i class="bi bi-camera-fill"></i> Webcam
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="input-mode" id="upload-mode" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="upload-mode">
+                                    <i class="bi bi-upload"></i> Upload Image
+                                </label>
+                            </div>
+                        </div>
+
+                        <form id="registration-form" enctype="multipart/form-data">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <!-- Webcam Section -->
+                                    <div class="webcam-section mb-4">
+                                        <div class="text-center mb-3">
+                                            <div id="preview">
+                                                <div class="camera-overlay"></div>
+                                                <div class="face-template"></div>
+                                                <div class="matrix-effect"></div>
+                                                <div id="webcam-placeholder">
+                                                    <i class="bi bi-camera fs-1 d-block mb-2"></i>
+                                                    Camera not available
+                                                </div>
+                                                <video id="webcam" autoplay playsinline></video>
+                                            </div>
+                                            
+                                            <div class="mt-3">
+                                                <button type="button" class="btn btn-primary btn-capture">
+                                                    <i class="bi bi-camera-fill"></i> Capture
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Upload Section -->
+                                    <div class="upload-section mb-4">
+                                        <div class="text-center mb-3">
+                                            <div id="upload-preview">
+                                                <div id="drop-area" class="drop-area">
+                                                    <p>Drag & drop an image file here or click to select</p>
+                                                    <input type="file" id="file-input" name="image" accept="image/*" class="form-control">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Result Section -->
+                                    <div class="result-section mb-4">
+                                        <div class="text-center mb-3">
+                                            <img id="result-preview" class="rounded" src="" alt="Captured image">
+                                            <div class="mt-3">
+                                                <button type="button" class="btn btn-secondary btn-retake">
+                                                    <i class="bi bi-arrow-repeat"></i> Retake
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="full_name" name="full_name" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="email" name="email">
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="dob" class="form-label">Date of Birth</label>
+                                                <input type="date" class="form-control" id="dob" name="dob">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="gender" class="form-label">Gender</label>
+                                                <select class="form-select" id="gender" name="gender">
+                                                    <option value="">Select gender</option>
+                                                    <option value="Male">Male</option>
+                                                    <option value="Female">Female</option>
+                                                    <option value="Other">Other</option>
+                                                    <option value="Prefer not to say">Prefer not to say</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="nationality" class="form-label">Nationality</label>
+                                        <input type="text" class="form-control" id="nationality" name="nationality">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="phone_number" class="form-label">Phone Number</label>
+                                        <input type="tel" class="form-control" id="phone_number" name="phone_number">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="address" class="form-label">Address</label>
+                                        <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5 class="mb-3">Login Credentials</h5>
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="username" name="username">
+                                        <div class="form-text text-muted">Leave blank for auto-generation</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="password" name="password">
+                                        <div class="form-text text-muted">Leave blank for auto-generation</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h5 class="mb-3">Role & Access</h5>
+                                    <div class="mb-3">
+                                        <label for="role" class="form-label">Role</label>
+                                        <select class="form-select" id="role" name="role">
+                                            <option value="Viewer">Viewer</option>
+                                            {% for role in roles %}
+                                            <option value="{{ role.name }}">{{ role.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Sector Access</label>
+                                        <div>
+                                            {% for sector in sectors %}
+                                            <div class="form-check form-check-inline sector-checkbox">
+                                                <input class="form-check-input" type="checkbox" id="sector-{{ sector.id }}" name="sectors" value="{{ sector.name }}">
+                                                <label class="form-check-label" for="sector-{{ sector.id }}">{{ sector.name }}</label>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <h5 class="mb-3">Consent & Agreement</h5>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="has_biometric_consent" id="has_biometric_consent" required>
+                                    <label class="form-check-label" for="has_biometric_consent">
+                                        I consent to the collection and storage of my biometric data for identification purposes
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="has_data_storage_consent" id="has_data_storage_consent" required>
+                                    <label class="form-check-label" for="has_data_storage_consent">
+                                        I consent to the storage of my personal information in the system database
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="terms_accepted" id="terms_accepted" required>
+                                    <label class="form-check-label" for="terms_accepted">
+                                        I agree to the terms and conditions of the facial recognition system
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 text-center">
+                                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                                    <i class="bi bi-person-plus-fill"></i> Register User
+                                </button>
+                                <a href="/" class="btn btn-outline-secondary btn-lg ms-2">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const webcamMode = document.getElementById('webcam-mode');
+            const uploadMode = document.getElementById('upload-mode');
+            const webcamSection = document.querySelector('.webcam-section');
+            const uploadSection = document.querySelector('.upload-section');
+            const resultSection = document.querySelector('.result-section');
+            const webcamElement = document.getElementById('webcam');
+            const webcamPlaceholder = document.getElementById('webcam-placeholder');
+            const captureBtn = document.querySelector('.btn-capture');
+            const retakeBtn = document.querySelector('.btn-retake');
+            const resultPreview = document.getElementById('result-preview');
+            const fileInput = document.getElementById('file-input');
+            const registrationForm = document.getElementById('registration-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const loadingIndicator = document.getElementById('loading');
+            const cameraOverlay = document.querySelector('.camera-overlay');
+            const faceTemplate = document.querySelector('.face-template');
+            
+            // Matrix effect
+            const matrixElement = document.querySelector('.matrix-effect');
+            let matrixChars = '';
+            for (let i = 0; i < 5000; i++) {
+                matrixChars += (Math.random() > 0.5) ? '1' : '0';
+                if (i % 100 === 0) matrixChars += '\n';
+            }
+            matrixElement.textContent = matrixChars;
+
+            // Variables
+            let stream;
+            let capturedImage;
+            let imageCapture;
+
+            // Mode selection
+            webcamMode.addEventListener('change', function() {
+                if (this.checked) {
+                    webcamSection.style.display = 'block';
+                    uploadSection.style.display = 'none';
+                    resultSection.style.display = 'none';
+                    startWebcam();
+                }
+            });
+
+            uploadMode.addEventListener('change', function() {
+                if (this.checked) {
+                    webcamSection.style.display = 'none';
+                    uploadSection.style.display = 'block';
+                    resultSection.style.display = 'none';
+                    stopWebcam();
+                }
+            });
+
+            // Start webcam
+            async function startWebcam() {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    webcamElement.srcObject = stream;
+                    webcamElement.style.display = 'block';
+                    webcamPlaceholder.style.display = 'none';
+                    captureBtn.style.display = 'inline-block';
+                    cameraOverlay.style.display = 'block';
+                    faceTemplate.style.display = 'block';
+                    
+                    // Create ImageCapture object
+                    const videoTrack = stream.getVideoTracks()[0];
+                    imageCapture = new ImageCapture(videoTrack);
+                } catch (error) {
+                    console.error('Error accessing webcam:', error);
+                    webcamElement.style.display = 'none';
+                    webcamPlaceholder.style.display = 'block';
+                    captureBtn.style.display = 'none';
+                }
+            }
+
+            // Stop webcam
+            function stopWebcam() {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    webcamElement.srcObject = null;
+                }
+                webcamElement.style.display = 'none';
+                webcamPlaceholder.style.display = 'block';
+                cameraOverlay.style.display = 'none';
+                faceTemplate.style.display = 'none';
+            }
+
+            // Capture image from webcam
+            captureBtn.addEventListener('click', async function() {
+                if (imageCapture) {
+                    try {
+                        const blob = await imageCapture.takePhoto();
+                        capturedImage = blob;
+                        resultPreview.src = URL.createObjectURL(blob);
+                        resultPreview.style.display = 'block';
+                        webcamSection.style.display = 'none';
+                        resultSection.style.display = 'block';
+                    } catch (error) {
+                        console.error('Error capturing image:', error);
+                        alert('Failed to capture image. Please try again.');
+                    }
+                }
+            });
+
+            // Retake photo
+            retakeBtn.addEventListener('click', function() {
+                resultSection.style.display = 'none';
+                if (webcamMode.checked) {
+                    webcamSection.style.display = 'block';
+                    startWebcam();
+                } else {
+                    uploadSection.style.display = 'block';
+                }
+            });
+
+            // File input change
+            fileInput.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    capturedImage = this.files[0];
+                    resultPreview.src = URL.createObjectURL(this.files[0]);
+                    resultPreview.style.display = 'block';
+                    uploadSection.style.display = 'none';
+                    resultSection.style.display = 'block';
+                }
+            });
+
+            // Form submission
+            registrationForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Check if image is captured or uploaded
+                if (!capturedImage) {
+                    alert('Please capture or upload an image first');
+                    return;
+                }
+                
+                // Show loading indicator
+                loadingIndicator.style.display = 'flex';
+                
+                // Create FormData and append form fields
+                const formData = new FormData(this);
+                
+                // Replace any existing image with the captured/uploaded one
+                if (formData.has('image')) {
+                    formData.delete('image');
+                }
+                formData.append('image', capturedImage);
+                
+                // Submit form via AJAX
+                fetch('/register', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    loadingIndicator.style.display = 'none';
+                    
+                    if (data.success) {
+                        // Show success message
+                        alert(data.message);
+                        
+                        // Redirect to dashboard or user list
+                        window.location.href = '/users/html';
+                    } else {
+                        // Show error message
+                        alert(data.message || 'Registration failed. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    loadingIndicator.style.display = 'none';
+                    console.error('Error submitting form:', error);
+                    alert('An error occurred during registration. Please try again.');
+                });
+            });
+
+            // Initialize - start with webcam mode
+            if (webcamMode.checked) {
+                webcamSection.style.display = 'block';
+                startWebcam();
+            }
+        });
+    </script>
+</body>
+</html>
