@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements - Register
     const registerForm = document.getElementById('registerForm');
-    const registerName = document.getElementById('registerName');
+    const fullName = document.getElementById('fullName');
     const registerImage = document.getElementById('registerImage');
     const registerPreviewImg = document.getElementById('registerPreviewImg');
     const registerPlaceholder = document.getElementById('registerPlaceholder');
@@ -94,8 +94,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to register a user
     function registerUser() {
-        if (!registerName.value.trim()) {
-            showAlert(registerAlert, 'Please enter a name', 'danger');
+        if (!fullName.value.trim()) {
+            showAlert(registerAlert, 'Please enter a full name', 'danger');
             return;
         }
         
@@ -104,10 +104,18 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Create form data
-        const formData = new FormData();
-        formData.append('name', registerName.value.trim());
-        formData.append('image', registerImage.files[0]);
+        // Validate consent checkboxes
+        const biometricConsent = document.getElementById('biometricConsent');
+        const dataStorageConsent = document.getElementById('dataStorageConsent');
+        const termsAccepted = document.getElementById('termsAccepted');
+        
+        if (!biometricConsent.checked || !dataStorageConsent.checked || !termsAccepted.checked) {
+            showAlert(registerAlert, 'You must accept all consent checkboxes to continue', 'danger');
+            return;
+        }
+        
+        // Create form data with all form fields
+        const formData = new FormData(registerForm);
         
         // Set button to loading state
         setButtonLoading(registerBtn, true);
@@ -202,17 +210,33 @@ document.addEventListener('DOMContentLoaded', function() {
         if (users.length === 0) {
             usersList.innerHTML = `
                 <tr>
-                    <td colspan="1" class="text-center">No users registered</td>
+                    <td colspan="3" class="text-center">No users registered</td>
                 </tr>
             `;
             return;
         }
         
+        // Update the table headers
+        const tableHeader = document.querySelector('#manage table thead tr');
+        tableHeader.innerHTML = `
+            <th>Name</th>
+            <th>Email</th>
+            <th>Registration Date</th>
+        `;
+        
         users.forEach(user => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${user.name}</td>
+                <td>${user.name || ''}</td>
+                <td>${user.email || 'N/A'}</td>
+                <td>${user.registration_date || 'N/A'}</td>
             `;
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', () => {
+                if (user.id) {
+                    window.location.href = `/user/${user.id}`;
+                }
+            });
             usersList.appendChild(row);
         });
     }

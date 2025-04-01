@@ -284,28 +284,62 @@ def list_users():
 @app.route('/user/<user_id>', methods=['GET'])
 def get_user(user_id):
     try:
-        user = User.query.filter_by(user_id=user_id).first()
-        
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        user_data = {
-            "id": user.user_id,
-            "full_name": user.full_name,
-            "email": user.email,
-            "phone_number": user.phone_number,
-            "dob": user.dob.strftime('%Y-%m-%d') if user.dob else None,
-            "gender": user.gender,
-            "nationality": user.nationality,
-            "address": user.address,
-            "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None,
-            "last_identification": user.last_identification.strftime('%Y-%m-%d %H:%M:%S') if user.last_identification else None
-        }
-        
-        return jsonify({'success': True, 'user': user_data})
+        # Check if format=json is in query parameters
+        if request.args.get('format') == 'json':
+            user = User.query.filter_by(user_id=user_id).first()
+            
+            if not user:
+                return jsonify({'success': False, 'message': 'User not found'}), 404
+            
+            user_data = {
+                "id": user.user_id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "phone_number": user.phone_number,
+                "dob": user.dob.strftime('%Y-%m-%d') if user.dob else None,
+                "gender": user.gender,
+                "nationality": user.nationality,
+                "address": user.address,
+                "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None,
+                "last_identification": user.last_identification.strftime('%Y-%m-%d %H:%M:%S') if user.last_identification else None
+            }
+            
+            return jsonify({'success': True, 'user': user_data})
+        else:
+            # HTML view for user details
+            user = User.query.filter_by(user_id=user_id).first()
+            
+            if not user:
+                flash('User not found', 'danger')
+                return redirect(url_for('index'))
+            
+            # Format the date fields for display
+            user_data = {
+                "id": user.user_id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "phone_number": user.phone_number,
+                "dob": user.dob.strftime('%Y-%m-%d') if user.dob else None,
+                "gender": user.gender,
+                "nationality": user.nationality,
+                "address": user.address,
+                "image_path": user.image_path,
+                "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None,
+                "last_identification": user.last_identification.strftime('%Y-%m-%d %H:%M:%S') if user.last_identification else None
+            }
+            
+            # Get activity logs for this user
+            activity_logs = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.timestamp.desc()).limit(10).all()
+            
+            return render_template('user_details.html', user=user_data, activity_logs=activity_logs)
+            
     except Exception as e:
         logging.error(f"Error getting user: {e}")
-        return jsonify({'success': False, 'message': 'Database error occurred while fetching user'}), 500
+        if request.args.get('format') == 'json':
+            return jsonify({'success': False, 'message': 'Database error occurred while fetching user'}), 500
+        else:
+            flash('An error occurred while fetching user details', 'danger')
+            return redirect(url_for('index'))
 
 @app.route('/reset', methods=['POST'])
 def reset_database():
