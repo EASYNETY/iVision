@@ -877,16 +877,20 @@ def get_audit_logs_html():
         def get_user_by_id(user_id):
             if not user_id:
                 return None
+                
             # Try to find by user_id first (UUID format)
-            user = User.query.filter_by(user_id=user_id).first()
+            user = User.query.filter_by(user_id=str(user_id)).first()
             if user:
                 return user
+                
             # If not found and it's a numeric ID, try by ID
             try:
-                if user_id.isdigit():
+                if isinstance(user_id, str) and user_id.isdigit():
                     return User.query.filter_by(id=int(user_id)).first()
+                # For safety, don't try to convert non-digit strings to int
                 return None
-            except:
+            except Exception as e:
+                logging.error(f"Error in get_user_by_id: {e}")
                 return None
             
         return render_template('audit_logs.html', 

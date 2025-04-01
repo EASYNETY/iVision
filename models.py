@@ -171,17 +171,33 @@ class User(UserMixin, db.Model):
         
     def has_sector_access(self, sector_name):
         """Check if user has access to a specific sector"""
+        import logging
+        
         sector = Sector.query.filter_by(name=sector_name).first()
         if not sector:
             return False
-            
-        # Check if user is associated with this sector
-        user_sector = UserSector.query.filter_by(
-            user_id=self.id, 
-            sector_id=sector.id
-        ).first()
         
-        return user_sector is not None
+        try:    
+            # Check if user is associated with this sector using numeric ID
+            user_sector = UserSector.query.filter_by(
+                user_id=self.id, 
+                sector_id=sector.id
+            ).first()
+            
+            if user_sector is not None:
+                return True
+                
+            # If no match found and user has a UUID, we could implement 
+            # additional checks here, but UserSector is designed 
+            # to work with the integer id only
+            
+            # For debugging
+            logging.debug(f"No sector access found for user {self.id} to sector {sector_name}")
+            return False
+            
+        except Exception as e:
+            logging.error(f"Error checking sector access for user {self.id}: {e}")
+            return False
     
     def __repr__(self):
         return f'<User {self.full_name}>'
