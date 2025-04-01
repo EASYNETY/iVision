@@ -195,8 +195,11 @@ def allowed_file(filename):
 def log_audit(user_id, action, status, details=None, ip_address=None):
     """Record an audit log entry"""
     try:
+        # Convert user_id to string if it's not None (audit_logs.user_id is a string type)
+        user_id_str = str(user_id) if user_id is not None else None
+        
         audit_log = AuditLog(
-            user_id=user_id,
+            user_id=user_id_str,
             action=action,
             status=status,
             details=details,
@@ -661,8 +664,8 @@ def get_user(user_id):
                 "last_identification": user.last_identification.strftime('%Y-%m-%d %H:%M:%S') if user.last_identification else None
             }
             
-            # Get activity logs for this user
-            activity_logs = AuditLog.query.filter_by(user_id=user_id).order_by(AuditLog.timestamp.desc()).limit(10).all()
+            # Get activity logs for this user - convert the ID to string because audit_logs.user_id is a string type
+            activity_logs = AuditLog.query.filter_by(user_id=str(user_id)).order_by(AuditLog.timestamp.desc()).limit(10).all()
             
             return render_template('user_details.html', user=user_data, activity_logs=activity_logs)
             
@@ -806,8 +809,8 @@ def dashboard():
         if sector:
             sectors.append(sector.name)
     
-    # Get audit logs for this user
-    recent_logs = AuditLog.query.filter_by(user_id=current_user.id).order_by(AuditLog.timestamp.desc()).limit(5).all()
+    # Get audit logs for this user - convert the ID to string because audit_logs.user_id is a string type
+    recent_logs = AuditLog.query.filter_by(user_id=str(current_user.id)).order_by(AuditLog.timestamp.desc()).limit(5).all()
     
     return render_template('dashboard.html', 
                           user=current_user, 
