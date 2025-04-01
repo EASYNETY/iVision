@@ -3,303 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facial Recognition System</title>
+    <meta http-equiv="refresh" content="0;url={{ url_for('login') }}">
+    <title>Redirecting to Login - Facial Recognition System</title>
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: var(--bs-dark);
+            color: var(--bs-light);
+        }
+        .loader {
+            border: 4px solid var(--bs-gray-700);
+            border-radius: 50%;
+            border-top: 4px solid var(--bs-primary);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .redirect-container {
+            text-align: center;
+        }
+        .redirect-message {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="bi bi-camera"></i> Facial Recognition System
-            </a>
+    <div class="redirect-container">
+        <div class="redirect-message">
+            <div class="loader"></div>
+            <h2>Redirecting to Login...</h2>
         </div>
-    </nav>
-
-    <div class="container py-5">
-        <div class="row">
-            <div class="col-lg-8 mx-auto">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header">
-                        <ul class="nav nav-tabs card-header-tabs" id="operationTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab" aria-controls="register" aria-selected="true">Register</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="identify-tab" data-bs-toggle="tab" data-bs-target="#identify" type="button" role="tab" aria-controls="identify" aria-selected="false">Identify</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab" aria-controls="manage" aria-selected="false">Manage</button>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="card-body">
-                        <div class="tab-content" id="operationTabsContent">
-                            <!-- Register Tab -->
-                            <div class="tab-pane fade show active" id="register" role="tabpanel" aria-labelledby="register-tab">
-                                <h5 class="card-title">Register a New User</h5>
-                                <p class="card-text">Upload a clear image of a face and provide user information to register in the system.</p>
-                                
-                                <form id="registerForm" enctype="multipart/form-data">
-                                    <!-- Basic Identification Information -->
-                                    <div class="card mb-3">
-                                        <div class="card-header bg-dark">
-                                            <h6 class="mb-0">Basic Identification Information</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="mb-3">
-                                                <label for="fullName" class="form-label">Full Name <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control" id="fullName" name="full_name" placeholder="Enter full name" required>
-                                            </div>
-                                            
-                                            <div class="row">
-                                                <div class="col-md-4 mb-3">
-                                                    <label for="dob" class="form-label">Date of Birth</label>
-                                                    <input type="date" class="form-control" id="dob" name="dob">
-                                                </div>
-                                                
-                                                <div class="col-md-4 mb-3">
-                                                    <label for="gender" class="form-label">Gender</label>
-                                                    <select class="form-select" id="gender" name="gender">
-                                                        <option value="">Select gender</option>
-                                                        <option value="Male">Male</option>
-                                                        <option value="Female">Female</option>
-                                                        <option value="Other">Other</option>
-                                                        <option value="Prefer not to say">Prefer not to say</option>
-                                                    </select>
-                                                </div>
-                                                
-                                                <div class="col-md-4 mb-3">
-                                                    <label for="nationality" class="form-label">Nationality</label>
-                                                    <input type="text" class="form-control" id="nationality" name="nationality" placeholder="Enter nationality">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Contact Information -->
-                                    <div class="card mb-3">
-                                        <div class="card-header bg-dark">
-                                            <h6 class="mb-0">Contact Information</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="email" class="form-label">Email Address</label>
-                                                    <input type="email" class="form-control" id="email" name="email" placeholder="Enter email">
-                                                </div>
-                                                
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="phoneNumber" class="form-label">Phone Number</label>
-                                                    <input type="tel" class="form-control" id="phoneNumber" name="phone_number" placeholder="Enter phone number">
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="mb-3">
-                                                <label for="address" class="form-label">Home Address</label>
-                                                <textarea class="form-control" id="address" name="address" rows="2" placeholder="Enter home address"></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Facial Data -->
-                                    <div class="card mb-3">
-                                        <div class="card-header bg-dark">
-                                            <h6 class="mb-0">Facial Data <span class="text-danger">*</span></h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="mb-3">
-                                                <label for="registerImage" class="form-label">Face Image</label>
-                                                <input type="file" class="form-control" id="registerImage" name="image" accept="image/png, image/jpeg, image/jpg" required>
-                                                <small class="form-text text-muted">Upload a clear front-facing image in good lighting.</small>
-                                            </div>
-                                            
-                                            <div class="mb-3">
-                                                <div id="registerPreview" class="image-preview text-center">
-                                                    <img id="registerPreviewImg" class="img-fluid d-none" alt="Preview">
-                                                    <div id="registerPlaceholder" class="placeholder">
-                                                        <i class="bi bi-card-image"></i>
-                                                        <span>Image preview will appear here</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Consent and Terms -->
-                                    <div class="card mb-3">
-                                        <div class="card-header bg-dark">
-                                            <h6 class="mb-0">Consent and Terms <span class="text-danger">*</span></h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="mb-3 form-check">
-                                                <input type="checkbox" class="form-check-input" id="biometricConsent" name="has_biometric_consent" value="true" required>
-                                                <label class="form-check-label" for="biometricConsent">
-                                                    I consent to the collection and processing of my facial data for identity verification purposes.
-                                                </label>
-                                            </div>
-                                            
-                                            <div class="mb-3 form-check">
-                                                <input type="checkbox" class="form-check-input" id="dataStorageConsent" name="has_data_storage_consent" value="true" required>
-                                                <label class="form-check-label" for="dataStorageConsent">
-                                                    I consent to the storage of my personal and biometric data in the system database.
-                                                </label>
-                                            </div>
-                                            
-                                            <div class="mb-3 form-check">
-                                                <input type="checkbox" class="form-check-input" id="termsAccepted" name="terms_accepted" value="true" required>
-                                                <label class="form-check-label" for="termsAccepted">
-                                                    I have read and accept the terms and conditions and privacy policy.
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <button type="submit" class="btn btn-primary w-100" id="registerBtn">
-                                        <i class="bi bi-person-plus"></i> Register User
-                                    </button>
-                                </form>
-                                
-                                <div class="alert mt-3 d-none" id="registerAlert" role="alert"></div>
-                            </div>
-                            
-                            <!-- Identify Tab -->
-                            <div class="tab-pane fade" id="identify" role="tabpanel" aria-labelledby="identify-tab">
-                                <h5 class="card-title">Identify a User</h5>
-                                <p class="card-text">Upload a face image to identify against registered users.</p>
-                                
-                                <form id="identifyForm" enctype="multipart/form-data">
-                                    <div class="mb-3">
-                                        <label for="identifyImage" class="form-label">Face Image</label>
-                                        <input type="file" class="form-control" id="identifyImage" accept="image/png, image/jpeg, image/jpg" required>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <div id="identifyPreview" class="image-preview text-center">
-                                            <img id="identifyPreviewImg" class="img-fluid d-none" alt="Preview">
-                                            <div id="identifyPlaceholder" class="placeholder">
-                                                <i class="bi bi-card-image"></i>
-                                                <span>Image preview will appear here</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <button type="submit" class="btn btn-primary" id="identifyBtn">
-                                        <i class="bi bi-search"></i> Identify Face
-                                    </button>
-                                </form>
-                                
-                                <div class="alert mt-3 d-none" id="identifyAlert" role="alert"></div>
-                            </div>
-                            
-                            <!-- Manage Tab -->
-                            <div class="tab-pane fade" id="manage" role="tabpanel" aria-labelledby="manage-tab">
-                                <h5 class="card-title">Manage Users</h5>
-                                <p class="card-text">View and manage registered users in the system.</p>
-                                
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <button class="btn btn-sm btn-outline-secondary" id="refreshUsersBtn">
-                                        <i class="bi bi-arrow-clockwise"></i> Refresh
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" id="resetDatabaseBtn">
-                                        <i class="bi bi-trash"></i> Reset Database
-                                    </button>
-                                </div>
-                                
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="usersList">
-                                            <tr>
-                                                <td colspan="1" class="text-center">No users registered</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                
-                                <div class="alert mt-3 d-none" id="manageAlert" role="alert"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card shadow-sm">
-                    <div class="card-header">
-                        <h5 class="mb-0">How it Works</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex mb-3">
-                            <div class="feature-icon">
-                                <i class="bi bi-person-plus-fill"></i>
-                            </div>
-                            <div>
-                                <h5>Register</h5>
-                                <p>Upload a clear facial image with a name to register a user.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex mb-3">
-                            <div class="feature-icon">
-                                <i class="bi bi-search"></i>
-                            </div>
-                            <div>
-                                <h5>Identify</h5>
-                                <p>Upload an image to identify a face against registered users.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex">
-                            <div class="feature-icon">
-                                <i class="bi bi-gear"></i>
-                            </div>
-                            <div>
-                                <h5>Manage</h5>
-                                <p>View registered users and reset the database if needed.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <p>If you are not redirected automatically, <a href="{{ url_for('login') }}">click here</a>.</p>
     </div>
-
-    <!-- Matrix Overlay for Advanced Animation Effect -->
-    <div class="matrix-overlay" id="matrixOverlay">
-        <div class="binary-background" id="binaryBackground"></div>
-        <div class="close-matrix" id="closeMatrix">×</div>
-        
-        <div class="matrix-content">
-            <div class="matrix-title">Advanced Facial Recognition Analysis</div>
-            
-            <div class="matrix-text" id="matrixStatusText">Initializing facial recognition vectors...</div>
-            
-            <div class="matrix-progress">
-                <div class="matrix-progress-bar" id="matrixProgressBar"></div>
-            </div>
-            
-            <div class="matrix-grid" id="matrixGrid">
-                <!-- Grid cells will be dynamically added -->
-            </div>
-            
-            <div class="result-container" id="matrixResult" style="display: none;">
-                <h4 class="typewriter" id="resultText">Identification Complete</h4>
-                <div id="matchDetails"></div>
-            </div>
-        </div>
-    </div>
-
-    <footer class="footer mt-auto py-3 bg-dark">
-        <div class="container text-center">
-            <span class="text-muted">Facial Recognition System | Powered by OpenCV</span>
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

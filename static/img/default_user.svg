@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Background -->
+        <circle cx="100" cy="100" r="100" fill="#343a40"/>
+        
+        <!-- Head -->
+        <circle cx="100" cy="85" r="40" fill="#909399"/>
+        
+        <!-- Body -->
+        <path d="M100,125 C65,125 40,150 40,190 L160,190 C160,150 135,125 100,125 Z" fill="#909399"/>
+        
+        <!-- Eyes -->
+        <circle cx="85" cy="80" r="5" fill="#343a40"/>
+        <circle cx="115" cy="80" r="5" fill="#343a40"/>
+        
+        <!-- Mouth -->
+        <path d="M85,100 C90,105 110,105 115,100" stroke="#343a40" stroke-width="2" fill="none"/>
+    </g>
+</svg>

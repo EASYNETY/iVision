@@ -11,11 +11,21 @@ from util.face_util import detect_faces, get_face_encoding, compare_faces
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from functools import wraps
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, SelectMultipleField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
 from models import db, User, AuditLog, Role, Sector, Permission, RolePermission, UserSector
 from models import JusticeRecord, BankingRecord, HumanitarianRecord, VotingRecord, IdCardRecord, TransportationRecord
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Define our forms
+class LoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    remember = BooleanField('Remember Me')
+    submit = SubmitField('Login')
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "facial-recognition-secret-key")
@@ -683,21 +693,23 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        remember = 'remember' in request.form
+    form = LoginForm()
+    
+    if form.validate_on_submit():
+        email = form.email.data
+        if email is not None:
+            email = email.strip()
+        password = form.password.data
+        if password is not None:
+            password = password.strip()
+        remember = form.remember.data
         
-        if not username or not password:
-            flash('Please provide both username and password', 'danger')
-            return render_template('login.html')
+        # First check if there's a user with this email
+        user = User.query.filter_by(email=email).first()
         
-        # First check if there's a user with this username
-        user = User.query.filter_by(username=username).first()
-        
-        # If not found by username, try email
+        # If not found by email, try username (in case user entered username in email field)
         if not user:
-            user = User.query.filter_by(email=username).first()
+            user = User.query.filter_by(username=email).first()
         
         if user and user.check_password(password):
             # Update last login timestamp
@@ -716,15 +728,16 @@ def login():
             if not next_page or url_parse(next_page).netloc != '':
                 next_page = url_for('dashboard')
                 
+            flash(f'Welcome back, {user.full_name}!', 'success')
             return redirect(next_page)
         else:
             # Log the failed login attempt
             log_audit(None, 'login', 'failure',
-                   f"Failed login attempt for username: {username}", request.remote_addr)
+                   f"Failed login attempt for email: {email}", request.remote_addr)
                    
-            flash('Invalid username or password', 'danger')
+            flash('Invalid email or password. Please try again.', 'danger')
             
-    return render_template('login.html')
+    return render_template('login.html', form=form)
 
 @app.route('/logout')
 @login_required

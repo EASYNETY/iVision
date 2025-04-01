@@ -22,9 +22,31 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('list_users') }}">Users</a>
                     </li>
+                    
+                    {% if current_user.role and current_user.role.name == 'Agency Admin' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Admin Panel</a>
                     </li>
+                    {% endif %}
+                    
+                    <!-- Sector navigation -->
+                    {% if current_user.sectors.all() %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="sectorsDropdown" role="button" data-bs-toggle="dropdown">
+                            Sectors
+                        </a>
+                        <ul class="dropdown-menu">
+                            {% for user_sector in current_user.sectors %}
+                                {% set sector = user_sector.sector %}
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('sector_dashboard', sector_name=sector.name) }}">
+                                        {{ sector.name }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endif %}
                 </ul>
                 
                 <ul class="navbar-nav ms-auto">
@@ -52,73 +74,97 @@
             {% endif %}
         {% endwith %}
         
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Edit User Role</h1>
+            <div>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Admin Panel</a>
+            </div>
+        </div>
+        
         <div class="row mb-4">
-            <div class="col-12">
+            <div class="col-lg-4 mb-4">
                 <div class="card">
                     <div class="card-header bg-primary text-white">
-                        <h3 class="mb-0">Edit User: {{ user.full_name }}</h3>
+                        <h3 class="mb-0">User Profile</h3>
                     </div>
                     <div class="card-body">
-                        <div class="row mb-4">
-                            <div class="col-md-8">
-                                <h5>User Information</h5>
-                                <p><strong>ID:</strong> {{ user.id }}</p>
-                                <p><strong>Username:</strong> {{ user.username }}</p>
-                                <p><strong>Full Name:</strong> {{ user.full_name }}</p>
-                                <p><strong>Email:</strong> {{ user.email }}</p>
-                                <p><strong>Status:</strong> 
-                                    {% if user.is_active %}
-                                    <span class="badge bg-success">Active</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Inactive</span>
-                                    {% endif %}
-                                </p>
+                        <div class="user-profile">
+                            <img src="{{ url_for('uploaded_file', filename=user.image_path.split('/')[-1]) }}" alt="{{ user.full_name }}" class="user-avatar">
+                            <h4 class="mt-3">{{ user.full_name }}</h4>
+                            <p class="text-muted">@{{ user.username }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                            
+                            {% if user.role %}
+                            <div class="mt-3">
+                                <strong>Current Role:</strong>
+                                <span class="role-badge role-{{ user.role.name.lower().replace(' ', '-') }}">{{ user.role.name }}</span>
                             </div>
-                            <div class="col-md-4 text-center">
-                                {% if user.image_path %}
-                                <img src="{{ url_for('uploaded_file', filename=user.image_path.split('/')[-1]) }}" 
-                                    alt="{{ user.full_name }}" class="img-fluid rounded-circle" style="max-width: 150px;">
-                                {% endif %}
+                            {% endif %}
+                            
+                            <div class="mt-3">
+                                <strong>Current Sectors:</strong><br>
+                                {% for sector_id in user_sectors %}
+                                    {% for sector in sectors %}
+                                        {% if sector.id == sector_id %}
+                                            <span class="sector-badge sector-{{ sector.name.lower().replace(' ', '-') }}">{{ sector.name }}</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">No sectors assigned</span>
+                                {% endfor %}
                             </div>
                         </div>
-                        
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Update Role & Access</h3>
+                    </div>
+                    <div class="card-body">
                         <form method="POST" action="{{ url_for('edit_user_role', user_id=user.id) }}">
-                            <h5>Role Assignment</h5>
-                            <div class="mb-3">
+                            <div class="mb-4">
                                 <label for="role_id" class="form-label">Role</label>
                                 <select class="form-select" id="role_id" name="role_id" required>
-                                    <option value="">Select a role</option>
+                                    <option value="" selected disabled>Select a role</option>
                                     {% for role in roles %}
-                                    <option value="{{ role.id }}" {% if user.role_id == role.id %}selected{% endif %}>
-                                        {{ role.name }} - {{ role.description }}
-                                    </option>
+                                        <option value="{{ role.id }}" {% if user.role_id == role.id %}selected{% endif %}>
+                                            {{ role.name }} - {{ role.description }}
+                                        </option>
                                     {% endfor %}
                                 </select>
+                                <div class="form-text">
+                                    Select the appropriate role for this user. Each role grants different permissions.
+                                </div>
                             </div>
                             
-                            <h5>Sector Access</h5>
-                            <div class="mb-3">
+                            <div class="mb-4">
+                                <label class="form-label">Sector Access</label>
                                 <div class="row">
                                     {% for sector in sectors %}
-                                    <div class="col-md-4 mb-2">
+                                    <div class="col-md-6 mb-2">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                   id="sector_{{ sector.id }}" 
-                                                   name="sector_ids" 
-                                                   value="{{ sector.id }}"
+                                            <input class="form-check-input" type="checkbox" name="sector_ids" 
+                                                   value="{{ sector.id }}" id="sector_{{ sector.id }}"
                                                    {% if sector.id in user_sectors %}checked{% endif %}>
                                             <label class="form-check-label" for="sector_{{ sector.id }}">
-                                                {{ sector.name }}
+                                                <span class="sector-badge sector-{{ sector.name.lower().replace(' ', '-') }}">{{ sector.name }}</span>
+                                                <br>
+                                                <small class="text-muted">{{ sector.description }}</small>
                                             </label>
                                         </div>
                                     </div>
                                     {% endfor %}
                                 </div>
+                                <div class="form-text">
+                                    Select which sectors this user should have access to.
+                                </div>
                             </div>
                             
-                            <div class="mt-4">
-                                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary">Update User Role & Access</button>
                             </div>
                         </form>
                     </div>

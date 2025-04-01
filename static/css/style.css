@@ -1,271 +1,355 @@
-/* Custom styles for the facial recognition application */
+/* Main Styles for Facial Recognition Application */
 
 body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
 }
 
-.container {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-}
-
+/* Custom card styling */
 .card {
-    border-radius: 0.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    margin-bottom: 20px;
+    background-color: var(--bs-dark);
+    border: 1px solid var(--bs-gray-800);
 }
 
-.image-preview {
+.card-header {
+    padding: 15px 20px;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Button overrides */
+.btn {
+    border-radius: 5px;
+    font-weight: 500;
+    text-transform: none;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.btn-success {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+}
+
+.btn-info {
+    color: var(--bs-white);
+    background-color: var(--bs-info);
+    border-color: var(--bs-info);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-success:hover,
+.btn-outline-info:hover {
+    color: var(--bs-white);
+}
+
+/* Form controls */
+.form-control {
+    border-radius: 5px;
+    padding: 10px 15px;
+    border: 1px solid var(--bs-gray-700);
+    background-color: var(--bs-gray-900);
+    color: var(--bs-light);
+}
+
+.form-control:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Table styling */
+.table {
+    color: var(--bs-light);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Navbar styling */
+.navbar {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    padding: 10px 0;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Badges */
+.badge {
+    padding: 6px 10px;
+    font-weight: 500;
+}
+
+/* User profile section */
+.user-profile {
+    text-align: center;
+    padding: 20px;
+}
+
+.user-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto 15px;
+    border: 3px solid var(--bs-primary);
+}
+
+/* Dashboard stats */
+.stat-card {
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-card .number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.stat-card .label {
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    color: var(--bs-gray-500);
+}
+
+/* Face registration and identification */
+.face-capture-box {
     width: 100%;
     height: 300px;
-    border: 2px dashed var(--bs-border-color);
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
+    background-color: var(--bs-gray-900);
+    border: 2px dashed var(--bs-gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+.face-capture-box.active {
+    border-color: var(--bs-success);
+}
+
+.face-instructions {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: var(--bs-gray-500);
+}
+
+/* Registration steps */
+.registration-steps {
+    counter-reset: step;
+    margin-bottom: 30px;
+}
+
+.registration-step {
     position: relative;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding-left: 40px;
+    margin-bottom: 15px;
 }
 
-.image-preview img {
-    max-height: 100%;
-    max-width: 100%;
-    object-fit: contain;
-}
-
-.placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--bs-secondary-color);
-    padding: 2rem;
-}
-
-.placeholder i {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}
-
-.feature-icon {
-    width: 50px;
-    height: 50px;
+.registration-step:before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 30px;
+    height: 30px;
+    background-color: var(--bs-primary);
+    color: var(--bs-white);
     border-radius: 50%;
-    background-color: var(--bs-dark-bg-subtle);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 1rem;
+    font-weight: bold;
 }
 
-.feature-icon i {
-    font-size: 1.5rem;
-    color: var(--bs-primary);
+/* Consent section */
+.consent-section {
+    padding: 20px;
+    background-color: var(--bs-gray-800);
+    border-radius: 8px;
+    margin-top: 20px;
 }
 
-.footer {
-    margin-top: auto;
+.consent-section h4 {
+    margin-bottom: 15px;
+    color: var(--bs-info);
 }
 
-/* Animation for loading state */
-.spinner-border {
-    width: 1rem;
-    height: 1rem;
-    margin-right: 0.5rem;
+/* Admin sections */
+.admin-controls {
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: var(--bs-gray-800);
+    border-radius: 8px;
 }
 
-/* Remove focus outline on cards */
-.card:focus {
-    outline: none;
+/* Audit logs styling */
+.audit-log-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-left: 3px solid var(--bs-info);
+    background-color: var(--bs-gray-800);
 }
 
-/* Custom form styles */
-.form-control:focus {
-    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+.audit-log-item.success {
+    border-left-color: var(--bs-success);
 }
 
-/* Alert animation */
-.alert {
-    transition: all 0.3s ease-in-out;
+.audit-log-item.failure {
+    border-left-color: var(--bs-danger);
 }
 
-/* Matrix-like Animation Effects */
-.matrix-overlay {
+.audit-timestamp {
+    font-size: 0.8rem;
+    color: var(--bs-gray-500);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stat-card .number {
+        font-size: 2rem;
+    }
+    
+    .face-capture-box {
+        height: 200px;
+    }
+    
+    .user-avatar {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+/* Matrix animation effect for special pages */
+.matrix-effect {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
-    z-index: 9999;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    overflow: hidden;
+    z-index: -1;
+    opacity: 0.2;
 }
 
-.matrix-content {
-    width: 80%;
-    max-width: 800px;
-    text-align: center;
-    color: #00ff00;
-    font-family: 'Courier New', monospace;
-    position: relative;
-    z-index: 2;
-}
-
-.matrix-title {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
+/* Role badges */
+.role-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: normal;
     text-transform: uppercase;
-    letter-spacing: 3px;
-    text-shadow: 0 0 5px #00ff00;
 }
 
-.matrix-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin: 20px 0;
+.role-admin {
+    background-color: var(--bs-danger);
+    color: var(--bs-white);
 }
 
-.matrix-cell {
-    height: 120px;
-    background-color: #000;
-    border: 1px solid #00ff00;
-    overflow: hidden;
-    position: relative;
-    box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+.role-agency {
+    background-color: var(--bs-primary);
+    color: var(--bs-white);
 }
 
-.matrix-cell img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.7;
-    filter: grayscale(70%) hue-rotate(120deg);
-    transition: all 0.3s;
+.role-viewer {
+    background-color: var(--bs-secondary);
+    color: var(--bs-white);
 }
 
-.matrix-cell.highlight img {
-    opacity: 1;
-    filter: none;
-    transform: scale(1.05);
-    box-shadow: 0 0 15px #00ff00;
+/* Sector badges */
+.sector-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    display: inline-block;
 }
 
-.matrix-cell .scan-line {
-    position: absolute;
-    width: 100%;
-    height: 2px;
-    background-color: rgba(0, 255, 0, 0.7);
-    top: 0;
-    left: 0;
-    box-shadow: 0 0 5px #00ff00;
-    animation: scan 2s linear infinite;
-    z-index: 2;
+.sector-justice {
+    background-color: var(--bs-danger);
+    color: var(--bs-white);
 }
 
-.matrix-text {
-    height: 20px;
-    overflow: hidden;
-    margin: 10px 0;
-    font-size: 14px;
-    text-align: left;
+.sector-banking {
+    background-color: var(--bs-success);
+    color: var(--bs-white);
 }
 
-.matrix-progress {
-    width: 100%;
-    height: 5px;
-    background-color: #003300;
-    margin: 20px 0;
-    overflow: hidden;
-    position: relative;
+.sector-humanitarian {
+    background-color: var(--bs-info);
+    color: var(--bs-white);
 }
 
-.matrix-progress-bar {
-    height: 100%;
-    width: 0%;
-    background-color: #00ff00;
-    transition: width 0.2s linear;
-    box-shadow: 0 0 10px #00ff00;
+.sector-voting {
+    background-color: var(--bs-warning);
+    color: var(--bs-dark);
 }
 
-@keyframes scan {
-    0% {
-        top: 0;
-    }
-    100% {
-        top: 100%;
-    }
+.sector-id-card {
+    background-color: var(--bs-primary);
+    color: var(--bs-white);
 }
 
-.binary-background {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    font-family: monospace;
-    color: rgba(0, 255, 0, 0.1);
-    font-size: 10px;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 1;
+.sector-transportation {
+    background-color: var(--bs-purple);
+    color: var(--bs-white);
 }
 
-.result-container {
-    border: 1px solid #00ff00;
-    padding: 20px;
-    margin-top: 20px;
-    position: relative;
-    overflow: hidden;
-    background-color: rgba(0, 0, 0, 0.5);
+/* Permission list */
+.permission-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
-.result-container:before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(45deg, #000000 25%, transparent 25%, transparent 50%, #000000 50%, #000000 75%, transparent 75%, transparent);
-    background-size: 4px 4px;
-    opacity: 0.1;
+.permission-list li {
+    margin-bottom: 5px;
+    padding: 5px 10px;
+    background-color: var(--bs-gray-800);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
 }
 
-.typewriter {
-    overflow: hidden;
-    border-right: .15em solid #00ff00;
-    white-space: nowrap;
-    margin: 0 auto;
-    letter-spacing: .15em;
-    animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
+.permission-list li::before {
+    content: "✓";
+    margin-right: 8px;
+    color: var(--bs-success);
+    font-weight: bold;
 }
 
-@keyframes typing {
-    from { width: 0 }
-    to { width: 100% }
+/* Tooltip customization */
+.tooltip {
+    font-size: 0.8rem;
 }
 
-@keyframes blink-caret {
-    from, to { border-color: transparent }
-    50% { border-color: #00ff00 }
-}
-
-.close-matrix {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    color: #00ff00;
-    font-size: 24px;
-    cursor: pointer;
-    z-index: 3;
-}
-
-.close-matrix:hover {
-    text-shadow: 0 0 10px #00ff00;
+.tooltip-inner {
+    max-width: 300px;
+    padding: 8px 12px;
 }

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Background -->
+        <circle cx="100" cy="100" r="100" fill="#0d6efd"></circle>
+        
+        <!-- Head -->
+        <circle cx="100" cy="85" r="40" fill="#ffffff"></circle>
+        
+        <!-- Body -->
+        <path d="M100,125 C65,125 40,150 40,190 L160,190 C160,150 135,125 100,125 Z" fill="#ffffff"></path>
+        
+        <!-- Security badge -->
+        <rect x="85" y="135" width="30" height="40" rx="5" ry="5" fill="#dc3545"></rect>
+        <rect x="90" y="150" width="20" height="5" fill="#ffffff"></rect>
+        <rect x="90" y="160" width="20" height="5" fill="#ffffff"></rect>
+        
+        <!-- Admin text -->
+        <text x="100" y="180" font-family="Arial" font-size="10" fill="#ffffff" text-anchor="middle">ADMIN</text>
+        
+        <!-- Security details -->
+        <circle cx="100" cy="145" r="5" fill="#ffffff"></circle>
+        
+        <!-- Eyes -->
+        <circle cx="85" cy="80" r="5" fill="#000000"></circle>
+        <circle cx="115" cy="80" r="5" fill="#000000"></circle>
+        
+        <!-- Glasses -->
+        <path d="M75,80 C75,85 80,90 85,90 C90,90 95,85 95,80 C95,75 90,70 85,70 C80,70 75,75 75,80 Z" stroke="#000000" stroke-width="2" fill="none"></path>
+        <path d="M105,80 C105,85 110,90 115,90 C120,90 125,85 125,80 C125,75 120,70 115,70 C110,70 105,75 105,80 Z" stroke="#000000" stroke-width="2" fill="none"></path>
+        <line x1="95" y1="80" x2="105" y2="80" stroke="#000000" stroke-width="2"></line>
+        <line x1="75" y1="80" x2="65" y2="75" stroke="#000000" stroke-width="2"></line>
+        <line x1="125" y1="80" x2="135" y2="75" stroke="#000000" stroke-width="2"></line>
+        
+        <!-- Mouth -->
+        <path d="M85,100 C90,105 110,105 115,100" stroke="#000000" stroke-width="2" fill="none"></path>
+        
+        <!-- Access code binary -->
+        <text x="115" y="30" font-family="monospace" font-size="5" fill="#ffffff" opacity="0.7">
+            10100111
+        </text>
+        <text x="115" y="40" font-family="monospace" font-size="5" fill="#ffffff" opacity="0.7">
+            00110101
+        </text>
+        <text x="115" y="50" font-family="monospace" font-size="5" fill="#ffffff" opacity="0.7">
+            11010010
+        </text>
+        <text x="115" y="60" font-family="monospace" font-size="5" fill="#ffffff" opacity="0.7">
+            01101001
+        </text>
+        
+        <!-- Status indicators -->
+        <circle cx="30" cy="30" r="10" fill="#20c997"></circle>
+        <text x="30" y="33" font-family="Arial" font-size="10" fill="#ffffff" text-anchor="middle">A</text>
+        
+        <circle cx="30" cy="55" r="10" fill="#20c997"></circle>
+        <text x="30" y="58" font-family="Arial" font-size="10" fill="#ffffff" text-anchor="middle">S</text>
+        
+        <!-- Border frame -->
+        <rect x="5" y="5" width="190" height="190" stroke="#ffffff" stroke-width="2" rx="10" ry="10" fill="none" stroke-dasharray="5,5"></rect>
+    </g>
+</svg>

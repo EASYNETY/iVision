@@ -22,21 +22,31 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('list_users') }}">Users</a>
                     </li>
+                    
+                    {% if current_user.role and current_user.role.name == 'Agency Admin' %}
                     <li class="nav-item">
                         <a class="nav-link active" href="{{ url_for('admin_dashboard') }}">Admin Panel</a>
                     </li>
+                    {% endif %}
                     
                     <!-- Sector navigation -->
+                    {% if current_user.sectors.all() %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="sectorsDropdown" role="button" data-bs-toggle="dropdown">
                             Sectors
                         </a>
                         <ul class="dropdown-menu">
-                            {% for sector in sectors %}
-                            <li><a class="dropdown-item" href="{{ url_for('sector_dashboard', sector_name=sector.name) }}">{{ sector.name }}</a></li>
+                            {% for user_sector in current_user.sectors %}
+                                {% set sector = user_sector.sector %}
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('sector_dashboard', sector_name=sector.name) }}">
+                                        {{ sector.name }}
+                                    </a>
+                                </li>
                             {% endfor %}
                         </ul>
                     </li>
+                    {% endif %}
                 </ul>
                 
                 <ul class="navbar-nav ms-auto">
@@ -64,67 +74,177 @@
             {% endif %}
         {% endwith %}
         
-        <h1 class="mb-4">Admin Dashboard</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Admin Dashboard</h1>
+            <div>
+                <span class="badge bg-danger fs-5">Admin Access</span>
+            </div>
+        </div>
         
         <div class="row mb-4">
-            <div class="col-12">
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="number">{{ users|length }}</div>
+                        <div class="label">Total Users</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card bg-success text-white">
+                    <div class="card-body">
+                        <div class="number">{{ roles|length }}</div>
+                        <div class="label">User Roles</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card bg-info text-white">
+                    <div class="card-body">
+                        <div class="number">{{ sectors|length }}</div>
+                        <div class="label">Sectors</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-4">
+                <div class="card stat-card bg-warning text-dark">
+                    <div class="card-body">
+                        <div class="number">{{ users|selectattr('last_login')|list|length }}</div>
+                        <div class="label">Active Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">User Management</h3>
+                {% if current_user.has_permission('create_user') %}
+                <a href="{{ url_for('register') }}" class="btn btn-sm btn-outline-light">Add New User</a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Full Name</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Sectors</th>
+                                <th>Registration Date</th>
+                                <th>Last Login</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.full_name }}</td>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.role %}
+                                        <span class="role-badge role-{{ user.role.name.lower().replace(' ', '-') }}">{{ user.role.name }}</span>
+                                    {% else %}
+                                        <span class="text-muted">None</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% for user_sector in user.sectors %}
+                                        <span class="sector-badge sector-{{ user_sector.sector.name.lower().replace(' ', '-') }}">{{ user_sector.sector.name }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ user.registration_date.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    {% if user.last_login %}
+                                        {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('get_user', user_id=user.user_id) }}" class="btn btn-sm btn-info">View</a>
+                                        {% if current_user.has_permission('manage_roles') %}
+                                        <a href="{{ url_for('edit_user_role', user_id=user.id) }}" class="btn btn-sm btn-primary">Edit Role</a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-4">
                 <div class="card">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h3 class="mb-0">User Management</h3>
-                        <div>
-                            <button class="btn btn-danger btn-sm" id="resetBtn" data-bs-toggle="modal" data-bs-target="#resetModal">
-                                Reset Database
-                            </button>
-                        </div>
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Roles</h3>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Username</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Sectors</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
+                                        <th>ID</th>
+                                        <th>Role Name</th>
+                                        <th>Description</th>
+                                        <th>User Count</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for user in users %}
+                                    {% for role in roles %}
                                     <tr>
-                                        <td>{{ user.full_name }}</td>
-                                        <td>{{ user.username }}</td>
-                                        <td>{{ user.email }}</td>
+                                        <td>{{ role.id }}</td>
                                         <td>
-                                            {% if user.role %}
-                                                {{ user.role.name }}
-                                            {% else %}
-                                                <span class="text-muted">None</span>
-                                            {% endif %}
+                                            <span class="role-badge role-{{ role.name.lower().replace(' ', '-') }}">{{ role.name }}</span>
                                         </td>
+                                        <td>{{ role.description }}</td>
+                                        <td>{{ role.users.count() }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Sectors</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Sector Name</th>
+                                        <th>Description</th>
+                                        <th>User Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sector in sectors %}
+                                    <tr>
+                                        <td>{{ sector.id }}</td>
                                         <td>
-                                            {% set user_sectors = user.sectors.all() %}
-                                            {% if user_sectors %}
-                                                {% for user_sector in user_sectors %}
-                                                    <span class="badge bg-info">{{ user_sector.sector.name }}</span>
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted">None</span>
-                                            {% endif %}
+                                            <span class="sector-badge sector-{{ sector.name.lower().replace(' ', '-') }}">{{ sector.name }}</span>
                                         </td>
-                                        <td>
-                                            {% if user.is_active %}
-                                            <span class="badge bg-success">Active</span>
-                                            {% else %}
-                                            <span class="badge bg-danger">Inactive</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <a href="{{ url_for('edit_user_role', user_id=user.id) }}" class="btn btn-primary btn-sm">Edit Role</a>
-                                            <a href="{{ url_for('get_user', user_id=user.user_id) }}" class="btn btn-info btn-sm">View</a>
-                                        </td>
+                                        <td>{{ sector.description }}</td>
+                                        <td>{{ sector.users.count() }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -135,109 +255,25 @@
             </div>
         </div>
         
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="mb-0">Roles</h3>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group">
-                            {% for role in roles %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                {{ role.name }}
-                                <span class="badge bg-primary rounded-pill">
-                                    {{ role.users.count() }} users
-                                </span>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
+        {% if current_user.has_permission('reset_database') %}
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h3 class="mb-0">Danger Zone</h3>
             </div>
-            
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="mb-0">Sectors</h3>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group">
-                            {% for sector in sectors %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                {{ sector.name }}
-                                <span class="badge bg-primary rounded-pill">
-                                    {{ sector.users.count() }} users
-                                </span>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading">Warning!</h4>
+                    <p>The following actions are potentially destructive and cannot be undone. Use with extreme caution.</p>
                 </div>
+                
+                <form action="{{ url_for('reset_database') }}" method="POST" onsubmit="return confirm('Are you sure you want to reset the database? This cannot be undone!');">
+                    <button type="submit" class="btn btn-danger">Reset Database</button>
+                </form>
             </div>
         </div>
-        
-        <!-- Audit Log button -->
-        <div class="row">
-            <div class="col-12 text-center">
-                <a href="{{ url_for('get_audit_logs') }}" class="btn btn-primary btn-lg">View Audit Logs</a>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Reset Database Modal -->
-    <div class="modal fade" id="resetModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">Reset Database</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-danger fw-bold">Warning: This action cannot be undone!</p>
-                    <p>Resetting the database will delete all users, activity logs, and associated data.</p>
-                    <p>Are you absolutely sure you want to proceed?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="confirmResetBtn">Reset Database</button>
-                </div>
-            </div>
-        </div>
+        {% endif %}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const confirmResetBtn = document.getElementById('confirmResetBtn');
-            
-            confirmResetBtn.addEventListener('click', function() {
-                fetch('/reset', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Hide the modal
-                        const resetModal = bootstrap.Modal.getInstance(document.getElementById('resetModal'));
-                        resetModal.hide();
-                        
-                        // Show success message and reload
-                        alert('Database reset successful!');
-                        window.location.reload();
-                    } else {
-                        alert('Error: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while resetting the database.');
-                });
-            });
-        });
-    </script>
 </body>
 </html>
