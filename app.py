@@ -423,18 +423,42 @@ def identify():
     
     if len(faces) == 0:
         os.remove(file_path)  # Clean up
-        return jsonify({'success': False, 'message': 'No face detected in the image'}), 400
+        
+        # Check if this is a browser request (HTML) or API call (JSON)
+        is_html_request = request.headers.get('Accept', '').find('text/html') >= 0 and 'application/json' not in request.headers.get('Accept', '')
+        
+        if is_html_request:
+            flash('No face was detected in the image. Please try again with a clearer photo where your face is clearly visible.', 'warning')
+            return redirect(url_for('identify'))
+        else:
+            return jsonify({'success': False, 'message': 'No face detected in the image'}), 400
     
     if len(faces) > 1:
         os.remove(file_path)  # Clean up
-        return jsonify({'success': False, 'message': 'Multiple faces detected. Please upload an image with a single face'}), 400
+        
+        # Check if this is a browser request (HTML) or API call (JSON)
+        is_html_request = request.headers.get('Accept', '').find('text/html') >= 0 and 'application/json' not in request.headers.get('Accept', '')
+        
+        if is_html_request:
+            flash('Multiple faces detected in the image. Please upload a photo with only your face clearly visible.', 'warning')
+            return redirect(url_for('identify'))
+        else:
+            return jsonify({'success': False, 'message': 'Multiple faces detected. Please upload an image with a single face'}), 400
     
     # Get face encoding
     face_encoding = get_face_encoding(file_path)
     
     if face_encoding is None:
         os.remove(file_path)  # Clean up
-        return jsonify({'success': False, 'message': 'Failed to encode face. Please try again with a clearer image'}), 400
+        
+        # Check if this is a browser request (HTML) or API call (JSON)
+        is_html_request = request.headers.get('Accept', '').find('text/html') >= 0 and 'application/json' not in request.headers.get('Accept', '')
+        
+        if is_html_request:
+            flash('Unable to process your facial features. Please try again with better lighting and a clearer photo.', 'warning')
+            return redirect(url_for('identify'))
+        else:
+            return jsonify({'success': False, 'message': 'Failed to encode face. Please try again with a clearer image'}), 400
     
     try:
         # Get all users from database
@@ -558,7 +582,15 @@ def identify():
     except Exception as e:
         os.remove(file_path)  # Clean up
         logging.error(f"Error during identification: {e}")
-        return jsonify({'success': False, 'message': 'Database error occurred during identification'}), 500
+        
+        # Check if this is a browser request (HTML) or API call (JSON)
+        is_html_request = request.headers.get('Accept', '').find('text/html') >= 0 and 'application/json' not in request.headers.get('Accept', '')
+        
+        if is_html_request:
+            flash('An error occurred while processing your request. Please try again.', 'danger')
+            return redirect(url_for('identify'))
+        else:
+            return jsonify({'success': False, 'message': 'Database error occurred during identification'}), 500
 
 @app.route('/users', methods=['GET'])
 def list_users():
@@ -1093,6 +1125,13 @@ def sector_dashboard(sector_name):
         # Get transportation records
         records = TransportationRecord.query.all()
         return render_template('sectors/transportation.html', sector=sector, users=users, records=records)
+
+    # Handle new sectors added from the document
+    elif sector_name in ['Health', 'Education', 'Public Safety', 'Local Government',
+                         'National Security', 'Environmental', 'Labor', 'Housing',
+                         'Telecommunications', 'Immigration', 'Social Services']:
+        # No specialized records yet for these sectors
+        return render_template('sectors/generic.html', sector=sector, users=users)
     
     # Generic sector view for any new sectors
     return render_template('sectors/generic.html', sector=sector, users=users)
