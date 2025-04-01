@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users - Facial Recognition System</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .user-card {
+            border-radius: 10px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: var(--bs-dark);
+            transition: transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .user-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background-color: var(--bs-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            overflow: hidden;
+        }
+        
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .user-avatar span {
+            font-size: 24px;
+            color: var(--bs-light);
+        }
+        
+        .user-info {
+            flex-grow: 1;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .user-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-active {
+            background-color: var(--bs-success);
+        }
+        
+        .status-inactive {
+            background-color: var(--bs-danger);
+        }
+        
+        .sector-badge {
+            background-color: var(--bs-info);
+            margin: 2px;
+            font-size: 0.75rem;
+        }
+        
+        .role-badge {
+            font-size: 0.8rem;
+        }
+        
+        .role-admin {
+            background-color: var(--bs-danger);
+        }
+        
+        .role-agency {
+            background-color: var(--bs-warning);
+        }
+        
+        .role-viewer {
+            background-color: var(--bs-success);
+        }
+        
+        .search-bar {
+            margin-bottom: 30px;
+        }
+        
+        .toggle-button {
+            margin-bottom: 20px;
+        }
+        
+        .matrix-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.05;
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix" class="matrix-effect"></canvas>
+    
+    <!-- Navigation bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Facial Recognition System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('list_users_html') }}">Users</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('identify') }}">Identify</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('register') }}">Register</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <h2 class="mb-4">Users</h2>
+        
+        <!-- Search and filter controls -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group search-bar">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search users...">
+                    <button class="btn btn-info" id="searchBtn">Search</button>
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <button id="toggleViewBtn" class="btn btn-secondary toggle-button">Toggle View</button>
+                <button id="refreshBtn" class="btn btn-primary toggle-button ms-2">Refresh</button>
+            </div>
+        </div>
+        
+        <!-- User cards view -->
+        <div id="userCards" class="row">
+            {% for user in users %}
+            <div class="col-md-6 col-lg-6 mb-4 user-item" 
+                 data-name="{{ user.name|lower }}" 
+                 data-email="{{ user.email|lower if user.email else '' }}" 
+                 data-role="{{ user.role|lower }}" 
+                 data-sectors="{{ ' '.join(user.sectors)|lower if user.sectors else '' }}">
+                <div class="user-card">
+                    <div class="d-flex align-items-center">
+                        <div class="user-avatar">
+                            {% if user.image_url %}
+                            <img src="{{ user.image_url }}" alt="{{ user.name }}">
+                            {% else %}
+                            <span>{{ user.name[0]|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="user-info">
+                            <h5 class="mb-1">
+                                {{ user.name }}
+                                <span class="user-status {% if user.is_active %}status-active{% else %}status-inactive{% endif %}"></span>
+                            </h5>
+                            <p class="mb-1">{{ user.email if user.email else 'No email' }}</p>
+                            <p class="mb-1">Username: {{ user.username if user.username else 'N/A' }}</p>
+                            <div class="d-flex mb-2">
+                                <span class="badge role-badge {% if 'admin' in user.role|lower %}role-admin{% elif 'agency' in user.role|lower %}role-agency{% else %}role-viewer{% endif %} me-2">
+                                    {{ user.role }}
+                                </span>
+                                <div>
+                                    {% for sector in user.sectors %}
+                                    <span class="badge sector-badge">{{ sector }}</span>
+                                    {% endfor %}
+                                    {% if not user.sectors %}
+                                    <small class="text-muted">No sectors assigned</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                Registered: {{ user.registration_date }}
+                                <br>
+                                Last login: {{ user.last_login if user.last_login else 'Never' }}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <a href="{{ url_for('get_user', user_id=user.id) }}" class="btn btn-sm btn-info">View Details</a>
+                        {% if current_user.has_permission('manage_roles') %}
+                        <a href="{{ url_for('edit_user_role', user_id=user.id) }}" class="btn btn-sm btn-warning">Edit Role</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- User table view (hidden by default) -->
+        <div id="userTable" class="row" style="display: none;">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-striped table-dark">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Sectors</th>
+                                <th>Status</th>
+                                <th>Registration</th>
+                                <th>Last Login</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr class="user-item" 
+                                data-name="{{ user.name|lower }}" 
+                                data-email="{{ user.email|lower if user.email else '' }}" 
+                                data-role="{{ user.role|lower }}" 
+                                data-sectors="{{ ' '.join(user.sectors)|lower if user.sectors else '' }}">
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.email if user.email else 'No email' }}</td>
+                                <td>{{ user.username if user.username else 'N/A' }}</td>
+                                <td><span class="badge role-badge {% if 'admin' in user.role|lower %}role-admin{% elif 'agency' in user.role|lower %}role-agency{% else %}role-viewer{% endif %}">{{ user.role }}</span></td>
+                                <td>
+                                    {% for sector in user.sectors %}
+                                    <span class="badge sector-badge">{{ sector }}</span>
+                                    {% endfor %}
+                                    {% if not user.sectors %}
+                                    <small class="text-muted">None</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if user.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ 'Active' if user.is_active else 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td>{{ user.registration_date }}</td>
+                                <td>{{ user.last_login if user.last_login else 'Never' }}</td>
+                                <td>
+                                    <a href="{{ url_for('get_user', user_id=user.id) }}" class="btn btn-sm btn-info">Details</a>
+                                    {% if current_user.has_permission('manage_roles') %}
+                                    <a href="{{ url_for('edit_user_role', user_id=user.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- No results message -->
+        <div id="noResults" class="alert alert-info text-center" style="display: none;">
+            No users match your search criteria.
+        </div>
+    </div>
+    
+    <script>
+        // Matrix effect for the background
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size to match window
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Characters to display
+        const characters = '01';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        
+        // One drop per column
+        const drops = [];
+        for (let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
+        
+        // Drawing the characters
+        function draw() {
+            // Black with opacity for the fade effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#0F0'; // green text
+            ctx.font = fontSize + 'px monospace';
+            
+            // Drawing the characters
+            for (let i = 0; i < drops.length; i++) {
+                // Random character
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                
+                // x = i * fontSize, y = drops[i] * fontSize
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                
+                // Sending the drop back to the top after it reaches a random point
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                
+                // Move drops down
+                drops[i]++;
+            }
+        }
+        
+        setInterval(draw, 35);
+        
+        // User list functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+            const toggleViewBtn = document.getElementById('toggleViewBtn');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const userCards = document.getElementById('userCards');
+            const userTable = document.getElementById('userTable');
+            const noResults = document.getElementById('noResults');
+            const userItems = document.querySelectorAll('.user-item');
+            
+            // Toggle between card and table view
+            toggleViewBtn.addEventListener('click', function() {
+                if (userCards.style.display === 'none') {
+                    userCards.style.display = 'flex';
+                    userTable.style.display = 'none';
+                    toggleViewBtn.textContent = 'Table View';
+                } else {
+                    userCards.style.display = 'none';
+                    userTable.style.display = 'block';
+                    toggleViewBtn.textContent = 'Card View';
+                }
+            });
+            
+            // Search functionality
+            function performSearch() {
+                const query = searchInput.value.toLowerCase().trim();
+                let resultsCount = 0;
+                
+                userItems.forEach(item => {
+                    const name = item.getAttribute('data-name');
+                    const email = item.getAttribute('data-email');
+                    const role = item.getAttribute('data-role');
+                    const sectors = item.getAttribute('data-sectors');
+                    
+                    if (
+                        name.includes(query) || 
+                        email.includes(query) || 
+                        role.includes(query) || 
+                        sectors.includes(query)
+                    ) {
+                        item.style.display = '';
+                        resultsCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                // Show/hide no results message
+                if (resultsCount === 0) {
+                    noResults.style.display = 'block';
+                } else {
+                    noResults.style.display = 'none';
+                }
+            }
+            
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+            
+            // Refresh button
+            refreshBtn.addEventListener('click', function() {
+                window.location.reload();
+            });
+        });
+    </script>
+</body>
+</html>

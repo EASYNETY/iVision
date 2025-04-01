@@ -534,6 +534,7 @@ def identify():
 
 @app.route('/users', methods=['GET'])
 def list_users():
+    """JSON API endpoint for user listing"""
     try:
         # Check if we need to include image paths (for matrix animation)
         include_images = request.args.get('include_images') == 'true'
@@ -580,6 +581,55 @@ def list_users():
     except Exception as e:
         logging.error(f"Error listing users: {e}")
         return jsonify({'success': False, 'message': 'Database error occurred while fetching users'}), 500
+
+@app.route('/users/html', methods=['GET'])
+@login_required
+def list_users_html():
+    """HTML page for user listing with UI"""
+    try:
+        users = User.query.all()
+        user_list = []
+        
+        for user in users:
+            # Get user's role
+            role = Role.query.get(user.role_id) if user.role_id else None
+            role_name = role.name if role else "No Role Assigned"
+            
+            # Get sectors the user has access to
+            user_sectors = UserSector.query.filter_by(user_id=user.id).all()
+            sectors = []
+            
+            for user_sector in user_sectors:
+                sector = Sector.query.get(user_sector.sector_id)
+                if sector:
+                    sectors.append(sector.name)
+            
+            user_data = {
+                "id": user.user_id,
+                "username": user.username,
+                "name": user.full_name,
+                "email": user.email,
+                "role": role_name,
+                "sectors": sectors,
+                "is_active": user.is_active,
+                "registration_date": user.registration_date.strftime('%Y-%m-%d %H:%M:%S') if user.registration_date else None,
+                "last_login": user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else None
+            }
+            
+            # Always include image paths for HTML view
+            if user.image_path:
+                # Get the filename part of the path
+                filename = os.path.basename(user.image_path)
+                # Create a URL for the image using our uploaded_file route
+                user_data["image_url"] = url_for('uploaded_file', filename=filename)
+            
+            user_list.append(user_data)
+        
+        return render_template('users.html', users=user_list)
+    except Exception as e:
+        logging.error(f"Error listing users in HTML: {e}")
+        flash('An error occurred while fetching users', 'danger')
+        return redirect(url_for('dashboard'))
 
 @app.route('/user/<user_id>', methods=['GET'])
 def get_user(user_id):
@@ -703,6 +753,7 @@ def reset_database():
 
 @app.route('/audit_logs', methods=['GET'])
 def get_audit_logs():
+    """JSON API endpoint for audit logs"""
     try:
         logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(100).all()
         
@@ -719,6 +770,52 @@ def get_audit_logs():
     except Exception as e:
         logging.error(f"Error fetching audit logs: {e}")
         return jsonify({'success': False, 'message': 'Database error occurred while fetching audit logs'}), 500
+
+@app.route('/audit_logs/html', methods=['GET'])
+@login_required
+def get_audit_logs_html():
+    """HTML page for audit logs with UI"""
+    try:
+        logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(100).all()
+        
+        log_list = [{
+            "timestamp": log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            "user_id": log.user_id,
+            "action": log.action,
+            "status": log.status,
+            "details": log.details,
+            "ip_address": log.ip_address
+        } for log in logs]
+        
+        # Helper function to get corresponding icon for action
+        def get_action_icon(action):
+            icons = {
+                'login': 'sign-in-alt',
+                'facial_login': 'camera',
+                'logout': 'sign-out-alt',
+                'register': 'user-plus',
+                'identify': 'id-card',
+                'update': 'edit',
+                'update_role': 'user-tag',
+                'reset_database': 'database',
+                'failure': 'exclamation-triangle'
+            }
+            return icons.get(action, 'info-circle')
+            
+        # Helper function to get user object by ID
+        def get_user_by_id(user_id):
+            if not user_id:
+                return None
+            return User.query.filter_by(id=user_id).first()
+            
+        return render_template('audit_logs.html', 
+                              logs=log_list, 
+                              get_action_icon=get_action_icon,
+                              get_user_by_id=get_user_by_id)
+    except Exception as e:
+        logging.error(f"Error fetching audit logs in HTML: {e}")
+        flash('An error occurred while fetching audit logs', 'danger')
+        return redirect(url_for('dashboard'))
 
 # Error handlers
 @app.errorhandler(413)

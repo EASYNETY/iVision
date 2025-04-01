@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facial Login - Facial Recognition System</title>
+    <title>Facial Identification - Facial Recognition System</title>
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
@@ -131,7 +131,7 @@
     
     <div class="container">
         <div class="login-container">
-            <h2 class="text-center mb-4">Facial Login</h2>
+            <h2 class="text-center mb-4">Person Identification</h2>
             
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -153,13 +153,13 @@
             <p class="status-msg" id="statusMessage">Allow camera access and look at the camera</p>
             
             <div class="camera-buttons">
-                <button id="captureBtn" class="btn btn-info">Capture & Login</button>
+                <button id="captureBtn" class="btn btn-info">Capture & Identify</button>
                 <button id="retakeBtn" class="btn btn-secondary" style="display: none;">Retake</button>
             </div>
             
             <form id="faceLoginForm" method="POST" action="{{ url_for('identify') }}" enctype="multipart/form-data" style="display: none;">
                 <input type="file" id="imageInput" name="image" accept="image/*">
-                <input type="hidden" name="login" value="true">
+                <input type="hidden" name="login" value="false">
             </form>
             
             <div class="or-divider">
@@ -167,8 +167,13 @@
             </div>
             
             <div class="d-grid gap-2">
+                <button id="uploadBtn" class="btn btn-outline-primary">Upload Image File</button>
+                <input type="file" id="fileInput" style="display: none;" accept="image/*">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-success">Back to Dashboard</a>
+                {% else %}
                 <a href="{{ url_for('login') }}" class="btn btn-outline-success">Login with Credentials</a>
-                <a href="{{ url_for('register') }}" class="btn btn-outline-primary">Register New User</a>
+                {% endif %}
                 <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Home</a>
             </div>
             
@@ -253,7 +258,7 @@
                 
                 cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = cameraStream;
-                statusMessage.textContent = 'Camera ready. Look directly at the camera and click "Capture & Login"';
+                statusMessage.textContent = 'Camera ready. Look directly at the camera and click "Capture & Identify"';
                 captureBtn.disabled = false;
             } catch (err) {
                 console.error('Error accessing camera:', err);
@@ -287,7 +292,7 @@
                 // Show retake button, update status
                 retakeBtn.style.display = 'inline-block';
                 captureBtn.textContent = 'Submit';
-                statusMessage.textContent = 'Image captured. Click Submit to login or Retake for a new photo.';
+                statusMessage.textContent = 'Image captured. Click Submit to identify or Retake for a new photo.';
                 
                 // Toggle camera button function
                 captureBtn.onclick = submitForm;
@@ -297,7 +302,7 @@
         // Submit the form with the captured image
         function submitForm() {
             statusMessage.textContent = 'Processing... Please wait';
-            recognitionStatus.innerHTML = '<div class="spinner-border spinner-border-sm text-info" role="status"><span class="visually-hidden">Loading...</span></div> Authenticating...';
+            recognitionStatus.innerHTML = '<div class="spinner-border spinner-border-sm text-info" role="status"><span class="visually-hidden">Loading...</span></div> Identifying...';
             faceLoginForm.submit();
         }
         
@@ -305,8 +310,8 @@
         function resetCamera() {
             video.play();
             retakeBtn.style.display = 'none';
-            captureBtn.textContent = 'Capture & Login';
-            statusMessage.textContent = 'Camera ready. Look directly at the camera and click "Capture & Login"';
+            captureBtn.textContent = 'Capture & Identify';
+            statusMessage.textContent = 'Camera ready. Look directly at the camera and click "Capture & Identify"';
             
             // Reset capture button function
             captureBtn.onclick = captureImage;
@@ -314,6 +319,45 @@
         
         // Initialize the camera when the page loads
         window.addEventListener('DOMContentLoaded', initCamera);
+        
+        // File upload functionality
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        
+        // Handle file upload button click
+        uploadBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // Handle file selection
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files.length > 0) {
+                // Copy the selected file to the form's file input
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(fileInput.files[0]);
+                imageInput.files = dataTransfer.files;
+                
+                // Update status and show the file name
+                const fileName = fileInput.files[0].name;
+                statusMessage.textContent = `Selected file: ${fileName}. Click Submit to identify.`;
+                
+                // Hide camera and show a placeholder for the image
+                video.style.display = 'none';
+                
+                // Modify buttons
+                captureBtn.textContent = 'Submit';
+                captureBtn.onclick = submitForm;
+                retakeBtn.style.display = 'inline-block';
+                retakeBtn.textContent = 'Cancel';
+                retakeBtn.onclick = function() {
+                    // Reset everything
+                    video.style.display = '';
+                    video.play();
+                    resetCamera();
+                    fileInput.value = '';
+                };
+            }
+        });
         
         // Set button event handlers
         captureBtn.onclick = captureImage;
