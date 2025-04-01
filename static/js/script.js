@@ -117,6 +117,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create form data with all form fields
         const formData = new FormData(registerForm);
         
+        // Explicitly add checkbox values since some browsers may not include unchecked boxes
+        formData.set('has_biometric_consent', biometricConsent.checked ? 'true' : 'false');
+        formData.set('has_data_storage_consent', dataStorageConsent.checked ? 'true' : 'false');
+        formData.set('terms_accepted', termsAccepted.checked ? 'true' : 'false');
+        
+        // For debugging
+        console.log("Biometric consent:", biometricConsent.checked);
+        console.log("Data storage consent:", dataStorageConsent.checked);
+        console.log("Terms accepted:", termsAccepted.checked);
+        
         // Set button to loading state
         setButtonLoading(registerBtn, true);
         

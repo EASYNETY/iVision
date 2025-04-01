@@ -79,9 +79,20 @@ def register():
     nationality = data.get('nationality', '').strip()
     phone_number = data.get('phone_number', '').strip()
     address = data.get('address', '').strip()
-    has_biometric_consent = data.get('has_biometric_consent') == 'true'
-    has_data_storage_consent = data.get('has_data_storage_consent') == 'true'
-    terms_accepted = data.get('terms_accepted') == 'true'
+    # Convert string values to boolean
+    has_biometric_consent_val = data.get('has_biometric_consent', 'false')
+    has_data_storage_consent_val = data.get('has_data_storage_consent', 'false')
+    terms_accepted_val = data.get('terms_accepted', 'false')
+    
+    # Debug logging
+    logging.debug(f"Biometric consent value: {has_biometric_consent_val}")
+    logging.debug(f"Data storage consent value: {has_data_storage_consent_val}")
+    logging.debug(f"Terms accepted value: {terms_accepted_val}")
+    
+    # Allow both 'true' (lowercase) and 'True' (uppercase)
+    has_biometric_consent = has_biometric_consent_val.lower() == 'true' or has_biometric_consent_val == 'on'
+    has_data_storage_consent = has_data_storage_consent_val.lower() == 'true' or has_data_storage_consent_val == 'on'
+    terms_accepted = terms_accepted_val.lower() == 'true' or terms_accepted_val == 'on'
     
     # Validate required fields
     if not full_name:
