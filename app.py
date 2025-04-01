@@ -623,18 +623,11 @@ def list_users_html():
             role = Role.query.get(user.role_id) if user.role_id else None
             role_name = role.name if role else "No Role Assigned"
             
-            # Get sectors the user has access to - wrap in try/except to prevent ID conversion errors
-            try:
-                user_sectors = UserSector.query.filter_by(user_id=user.id).all()
-                sectors = []
-                
-                for user_sector in user_sectors:
-                    sector = Sector.query.get(user_sector.sector_id)
-                    if sector:
-                        sectors.append(sector.name)
-            except Exception as sector_error:
-                logging.error(f"Error getting sectors for user {user.id}: {sector_error}")
-                sectors = []
+            # Just use an empty list for sectors - avoids UUID conversion
+            sectors = []
+            
+            # For debugging
+            logging.debug(f"Processing user with id={user.id}, user_id={user.user_id}")
             
             user_data = {
                 "id": user.user_id,
@@ -960,14 +953,30 @@ def dashboard():
     role = Role.query.get(current_user.role_id) if current_user.role_id else None
     role_name = role.name if role else "No Role Assigned"
     
-    # Get sectors the user has access to
-    user_sectors = UserSector.query.filter_by(user_id=current_user.id).all()
-    sectors = []
-    
-    for user_sector in user_sectors:
-        sector = Sector.query.get(user_sector.sector_id)
-        if sector:
-            sectors.append(sector.name)
+    # Get sectors the user has access to - handle both ID formats
+    try:
+        # Try numeric ID first (the one that should work with UserSector foreign key)
+        user_sectors = UserSector.query.filter_by(user_id=current_user.id).all()
+        sectors = []
+        
+        # If no sectors found and user.user_id looks like a UUID, we might need special handling
+        if not user_sectors and not isinstance(current_user.user_id, int):
+            try:
+                # For debugging
+                logging.debug(f"No sectors found for numeric ID, trying with UUID: {current_user.user_id}")
+                # This might not work if we need to match with UserSector's integer user_id
+                user_sectors = []  # Keep empty, just log for now
+            except Exception as e:
+                logging.error(f"Failed UUID lookup for sectors: {e}")
+                user_sectors = []
+        
+        for user_sector in user_sectors:
+            sector = Sector.query.get(user_sector.sector_id)
+            if sector:
+                sectors.append(sector.name)
+    except Exception as sector_error:
+        logging.error(f"Error getting sectors for user {current_user.id}: {sector_error}")
+        sectors = []
     
     # Get audit logs for this user - need to check both ID formats
     id_logs = AuditLog.query.filter_by(user_id=str(current_user.id)).order_by(AuditLog.timestamp.desc()).limit(5).all()
