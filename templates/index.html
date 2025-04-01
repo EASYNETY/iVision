@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facial Recognition System</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-camera"></i> Facial Recognition System
+            </a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="operationTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab" aria-controls="register" aria-selected="true">Register</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="identify-tab" data-bs-toggle="tab" data-bs-target="#identify" type="button" role="tab" aria-controls="identify" aria-selected="false">Identify</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab" aria-controls="manage" aria-selected="false">Manage</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="operationTabsContent">
+                            <!-- Register Tab -->
+                            <div class="tab-pane fade show active" id="register" role="tabpanel" aria-labelledby="register-tab">
+                                <h5 class="card-title">Register a New User</h5>
+                                <p class="card-text">Upload a clear image of a face to register in the system.</p>
+                                
+                                <form id="registerForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label for="registerName" class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="registerName" placeholder="Enter user name" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="registerImage" class="form-label">Face Image</label>
+                                        <input type="file" class="form-control" id="registerImage" accept="image/png, image/jpeg, image/jpg" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div id="registerPreview" class="image-preview text-center">
+                                            <img id="registerPreviewImg" class="img-fluid d-none" alt="Preview">
+                                            <div id="registerPlaceholder" class="placeholder">
+                                                <i class="bi bi-card-image"></i>
+                                                <span>Image preview will appear here</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary" id="registerBtn">
+                                        <i class="bi bi-person-plus"></i> Register User
+                                    </button>
+                                </form>
+                                
+                                <div class="alert mt-3 d-none" id="registerAlert" role="alert"></div>
+                            </div>
+                            
+                            <!-- Identify Tab -->
+                            <div class="tab-pane fade" id="identify" role="tabpanel" aria-labelledby="identify-tab">
+                                <h5 class="card-title">Identify a User</h5>
+                                <p class="card-text">Upload a face image to identify against registered users.</p>
+                                
+                                <form id="identifyForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label for="identifyImage" class="form-label">Face Image</label>
+                                        <input type="file" class="form-control" id="identifyImage" accept="image/png, image/jpeg, image/jpg" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div id="identifyPreview" class="image-preview text-center">
+                                            <img id="identifyPreviewImg" class="img-fluid d-none" alt="Preview">
+                                            <div id="identifyPlaceholder" class="placeholder">
+                                                <i class="bi bi-card-image"></i>
+                                                <span>Image preview will appear here</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary" id="identifyBtn">
+                                        <i class="bi bi-search"></i> Identify Face
+                                    </button>
+                                </form>
+                                
+                                <div class="alert mt-3 d-none" id="identifyAlert" role="alert"></div>
+                            </div>
+                            
+                            <!-- Manage Tab -->
+                            <div class="tab-pane fade" id="manage" role="tabpanel" aria-labelledby="manage-tab">
+                                <h5 class="card-title">Manage Users</h5>
+                                <p class="card-text">View and manage registered users in the system.</p>
+                                
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <button class="btn btn-sm btn-outline-secondary" id="refreshUsersBtn">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" id="resetDatabaseBtn">
+                                        <i class="bi bi-trash"></i> Reset Database
+                                    </button>
+                                </div>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="usersList">
+                                            <tr>
+                                                <td colspan="1" class="text-center">No users registered</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="alert mt-3 d-none" id="manageAlert" role="alert"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0">How it Works</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex mb-3">
+                            <div class="feature-icon">
+                                <i class="bi bi-person-plus-fill"></i>
+                            </div>
+                            <div>
+                                <h5>Register</h5>
+                                <p>Upload a clear facial image with a name to register a user.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex mb-3">
+                            <div class="feature-icon">
+                                <i class="bi bi-search"></i>
+                            </div>
+                            <div>
+                                <h5>Identify</h5>
+                                <p>Upload an image to identify a face against registered users.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex">
+                            <div class="feature-icon">
+                                <i class="bi bi-gear"></i>
+                            </div>
+                            <div>
+                                <h5>Manage</h5>
+                                <p>View registered users and reset the database if needed.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <div class="container text-center">
+            <span class="text-muted">Facial Recognition System | Powered by OpenCV</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
