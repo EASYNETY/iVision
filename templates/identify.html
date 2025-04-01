@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facial Identification - Facial Recognition System</title>
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         .login-container {
@@ -124,6 +126,36 @@
             font-size: 0.9rem;
             color: var(--bs-secondary);
         }
+        
+        /* Cropper.js styles */
+        .cropper-container {
+            max-width: 100%;
+            height: 400px;
+        }
+        
+        .img-container {
+            max-width: 100%;
+            max-height: 350px;
+            margin-bottom: 10px;
+        }
+        
+        .img-container img {
+            max-width: 100%;
+            max-height: 350px;
+        }
+        
+        .cropper-section {
+            display: none;
+        }
+        
+        .cropper-view-box {
+            outline: 1px solid #39f;
+            outline-color: rgba(51, 153, 255, 0.75);
+        }
+        
+        .cropper-actions {
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -148,6 +180,21 @@
                 <canvas id="canvas"></canvas>
                 <div class="camera-overlay"></div>
                 <div class="scanning-effect"></div>
+            </div>
+            
+            <!-- Cropper Section -->
+            <div class="cropper-section">
+                <div class="img-container">
+                    <img id="cropper-image" class="img-fluid" src="" alt="Image for cropping">
+                </div>
+                <div class="cropper-actions text-center mt-3">
+                    <button type="button" class="btn btn-success btn-apply-crop">
+                        <i class="bi bi-check-circle"></i> Apply Crop
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-cancel-crop ms-2">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                </div>
             </div>
             
             <p class="status-msg" id="statusMessage">Allow camera access and look at the camera</p>
@@ -184,6 +231,7 @@
         </div>
     </div>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script>
         // Matrix effect for the background
         const canvas = document.getElementById('matrix');
@@ -243,6 +291,15 @@
         const faceLoginForm = document.getElementById('faceLoginForm');
         const recognitionStatus = document.getElementById('recognitionStatus');
         
+        // Cropper elements
+        const cropperSection = document.querySelector('.cropper-section');
+        const cameraContainer = document.querySelector('.camera-container');
+        const cropperImage = document.getElementById('cropper-image');
+        const applyBtn = document.querySelector('.btn-apply-crop');
+        const cancelBtn = document.querySelector('.btn-cancel-crop');
+        
+        // Cropper instance
+        let cropper;
         let cameraStream = null;
         
         // Initialize camera
@@ -267,36 +324,44 @@
             }
         }
         
-        // Capture image from video stream
+        // Capture image from video stream and open in cropper
         function captureImage() {
             const context = captureCanvas.getContext('2d');
             captureCanvas.width = video.videoWidth;
             captureCanvas.height = video.videoHeight;
             context.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
             
-            // Convert canvas to blob
+            // Pause video
+            video.pause();
+            
+            // Convert canvas to blob for the cropper
             captureCanvas.toBlob((blob) => {
-                // Create a File object from the Blob
-                const capturedImage = new File([blob], 'facial-login.jpg', { type: 'image/jpeg' });
+                // Show the cropper section, hide camera
+                cameraContainer.style.display = 'none';
+                cropperImage.src = URL.createObjectURL(blob);
+                cropperSection.style.display = 'block';
                 
-                // Create a FileList-like object
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(capturedImage);
+                // Initialize Cropper.js
+                if (cropper) {
+                    cropper.destroy();
+                }
                 
-                // Set the file input's files
-                imageInput.files = dataTransfer.files;
+                cropper = new Cropper(cropperImage, {
+                    aspectRatio: 1, // square crop
+                    viewMode: 1,    // restrict the crop box to not exceed the size of the canvas
+                    guides: true,   // show gridlines
+                    autoCropArea: 0.8, // 80% of the image will be in the initial crop area
+                    dragMode: 'move', // allows moving the image
+                    background: false // hide the background
+                });
                 
-                // Pause video
-                video.pause();
+                // Update status message
+                statusMessage.textContent = 'Adjust the crop area to focus on the face, then click Apply';
                 
-                // Show retake button, update status
-                retakeBtn.style.display = 'inline-block';
-                captureBtn.textContent = 'Submit';
-                statusMessage.textContent = 'Image captured. Click Submit to identify or Retake for a new photo.';
-                
-                // Toggle camera button function
-                captureBtn.onclick = submitForm;
-            }, 'image/jpeg', 0.9);
+                // Hide regular camera buttons while cropping
+                captureBtn.style.display = 'none';
+                retakeBtn.style.display = 'none';
+            }, 'image/jpeg', 0.95);
         }
         
         // Submit the form with the captured image
@@ -332,34 +397,107 @@
         // Handle file selection
         fileInput.addEventListener('change', function() {
             if (fileInput.files.length > 0) {
-                // Copy the selected file to the form's file input
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(fileInput.files[0]);
-                imageInput.files = dataTransfer.files;
+                // Show the cropper section, hide camera
+                cameraContainer.style.display = 'none';
+                cropperImage.src = URL.createObjectURL(fileInput.files[0]);
+                cropperSection.style.display = 'block';
                 
-                // Update status and show the file name
-                const fileName = fileInput.files[0].name;
-                statusMessage.textContent = `Selected file: ${fileName}. Click Submit to identify.`;
+                // Initialize Cropper.js
+                if (cropper) {
+                    cropper.destroy();
+                }
                 
-                // Hide camera and show a placeholder for the image
-                video.style.display = 'none';
+                cropper = new Cropper(cropperImage, {
+                    aspectRatio: 1, // square crop
+                    viewMode: 1,    // restrict the crop box to not exceed the size of the canvas
+                    guides: true,   // show gridlines
+                    autoCropArea: 0.8, // 80% of the image will be in the initial crop area
+                    dragMode: 'move', // allows moving the image
+                    background: false // hide the background
+                });
                 
-                // Modify buttons
-                captureBtn.textContent = 'Submit';
-                captureBtn.onclick = submitForm;
-                retakeBtn.style.display = 'inline-block';
-                retakeBtn.textContent = 'Cancel';
-                retakeBtn.onclick = function() {
-                    // Reset everything
-                    video.style.display = '';
-                    video.play();
-                    resetCamera();
-                    fileInput.value = '';
-                };
+                // Update status message
+                statusMessage.textContent = 'Adjust the crop area to focus on the face, then click Apply';
+                
+                // Hide regular camera buttons while cropping
+                captureBtn.style.display = 'none';
+                retakeBtn.style.display = 'none';
             }
         });
         
-        // Set button event handlers
+        // Apply crop button handler
+        applyBtn.addEventListener('click', function() {
+            if (!cropper) {
+                return;
+            }
+            
+            // Get the cropped canvas
+            const canvas = cropper.getCroppedCanvas({
+                width: 400,
+                height: 400,
+                fillColor: '#000',
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+            
+            // Convert canvas to blob
+            canvas.toBlob(function(blob) {
+                // Create a File object from the Blob
+                const croppedImage = new File([blob], 'cropped-facial-login.jpg', { type: 'image/jpeg' });
+                
+                // Create a FileList-like object
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(croppedImage);
+                
+                // Set the file input's files
+                imageInput.files = dataTransfer.files;
+                
+                // Show crop result and prepare for submission
+                cropperSection.style.display = 'none';
+                statusMessage.textContent = 'Image cropped. Click Submit to identify.';
+                
+                // Show and modify buttons
+                captureBtn.style.display = '';
+                captureBtn.textContent = 'Submit';
+                captureBtn.onclick = submitForm;
+                retakeBtn.style.display = '';
+                retakeBtn.textContent = 'Retake';
+                
+                // Clean up cropper
+                cropper.destroy();
+                cropper = null;
+            }, 'image/jpeg', 0.95);
+        });
+        
+        // Cancel crop button handler
+        cancelBtn.addEventListener('click', function() {
+            cropperSection.style.display = 'none';
+            
+            // Reset buttons
+            captureBtn.style.display = '';
+            retakeBtn.style.display = '';
+            
+            if (video.srcObject) {
+                // Back to webcam mode
+                cameraContainer.style.display = 'block';
+                video.play();
+                resetCamera();
+            } else {
+                // Was in file upload mode, reset everything
+                cameraContainer.style.display = 'block';
+                initCamera();
+                resetCamera();
+                fileInput.value = '';
+            }
+            
+            // Clean up cropper
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+        
+        // Set initial button event handlers
         captureBtn.onclick = captureImage;
         retakeBtn.onclick = resetCamera;
     </script>

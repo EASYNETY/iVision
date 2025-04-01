@@ -6,6 +6,7 @@
     <title>Register New User - Facial Recognition System</title>
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         #preview {
@@ -104,12 +105,38 @@
             z-index: 1000;
         }
 
-        .upload-section, .webcam-section, .result-section {
+        .upload-section, .webcam-section, .result-section, .cropper-section {
             display: none;
         }
 
         .btn-capture {
             display: none;
+        }
+        
+        /* Cropper.js styles */
+        .cropper-container {
+            max-width: 100%;
+            height: 400px;
+        }
+        
+        .img-container {
+            max-width: 100%;
+            max-height: 350px;
+            margin-bottom: 10px;
+        }
+        
+        .img-container img {
+            max-width: 100%;
+            max-height: 350px;
+        }
+        
+        .cropper-view-box {
+            outline: 1px solid #39f;
+            outline-color: rgba(51, 153, 255, 0.75);
+        }
+        
+        .cropper-actions {
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -214,6 +241,23 @@
                                         </div>
                                     </div>
 
+                                    <!-- Cropper Section -->
+                                    <div class="cropper-section mb-4">
+                                        <div class="text-center mb-3">
+                                            <div class="img-container">
+                                                <img id="cropper-image" class="img-fluid" src="" alt="Image for cropping">
+                                            </div>
+                                            <div class="cropper-actions mt-3">
+                                                <button type="button" class="btn btn-success btn-apply-crop">
+                                                    <i class="bi bi-check-circle"></i> Apply Crop
+                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-cancel-crop ms-2">
+                                                    <i class="bi bi-x-circle"></i> Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <!-- Result Section -->
                                     <div class="result-section mb-4">
                                         <div class="text-center mb-3">
@@ -358,6 +402,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Elements
@@ -366,6 +411,7 @@
             const webcamSection = document.querySelector('.webcam-section');
             const uploadSection = document.querySelector('.upload-section');
             const resultSection = document.querySelector('.result-section');
+            const cropperSection = document.querySelector('.cropper-section');
             const webcamElement = document.getElementById('webcam');
             const webcamPlaceholder = document.getElementById('webcam-placeholder');
             const captureBtn = document.querySelector('.btn-capture');
@@ -377,6 +423,14 @@
             const loadingIndicator = document.getElementById('loading');
             const cameraOverlay = document.querySelector('.camera-overlay');
             const faceTemplate = document.querySelector('.face-template');
+            
+            // Cropper elements
+            const cropperImage = document.getElementById('cropper-image');
+            const applyBtn = document.querySelector('.btn-apply-crop');
+            const cancelBtn = document.querySelector('.btn-cancel-crop');
+            
+            // Cropper instance
+            let cropper;
             
             // Matrix effect
             const matrixElement = document.querySelector('.matrix-effect');
@@ -445,16 +499,30 @@
                 faceTemplate.style.display = 'none';
             }
 
-            // Capture image from webcam
+            // Capture image from webcam and open in cropper
             captureBtn.addEventListener('click', async function() {
                 if (imageCapture) {
                     try {
                         const blob = await imageCapture.takePhoto();
-                        capturedImage = blob;
-                        resultPreview.src = URL.createObjectURL(blob);
-                        resultPreview.style.display = 'block';
+                        
+                        // Show the cropper section
                         webcamSection.style.display = 'none';
-                        resultSection.style.display = 'block';
+                        cropperImage.src = URL.createObjectURL(blob);
+                        cropperSection.style.display = 'block';
+                        
+                        // Initialize Cropper.js
+                        if (cropper) {
+                            cropper.destroy();
+                        }
+                        
+                        cropper = new Cropper(cropperImage, {
+                            aspectRatio: 1, // square crop
+                            viewMode: 1,     // restrict the crop box to not exceed the size of the canvas
+                            guides: true,    // show gridlines
+                            autoCropArea: 0.8, // 80% of the image will be in the initial crop area
+                            dragMode: 'move', // allows moving the image
+                            background: false // hide the background
+                        });
                     } catch (error) {
                         console.error('Error capturing image:', error);
                         alert('Failed to capture image. Please try again.');
@@ -476,11 +544,24 @@
             // File input change
             fileInput.addEventListener('change', function(e) {
                 if (this.files && this.files[0]) {
-                    capturedImage = this.files[0];
-                    resultPreview.src = URL.createObjectURL(this.files[0]);
-                    resultPreview.style.display = 'block';
+                    // Open in cropper
                     uploadSection.style.display = 'none';
-                    resultSection.style.display = 'block';
+                    cropperImage.src = URL.createObjectURL(this.files[0]);
+                    cropperSection.style.display = 'block';
+                    
+                    // Initialize Cropper.js
+                    if (cropper) {
+                        cropper.destroy();
+                    }
+                    
+                    cropper = new Cropper(cropperImage, {
+                        aspectRatio: 1, // square crop
+                        viewMode: 1,    // restrict the crop box to not exceed the size of the canvas
+                        guides: true,   // show gridlines
+                        autoCropArea: 0.8, // 80% of the image will be in the initial crop area
+                        dragMode: 'move', // allows moving the image
+                        background: false // hide the background
+                    });
                 }
             });
 
@@ -533,6 +614,52 @@
                 });
             });
 
+            // Apply crop
+            applyBtn.addEventListener('click', function() {
+                if (!cropper) {
+                    return;
+                }
+                
+                // Get the cropped canvas
+                const canvas = cropper.getCroppedCanvas({
+                    width: 400,
+                    height: 400,
+                    fillColor: '#000',
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                });
+                
+                // Convert canvas to blob
+                canvas.toBlob(function(blob) {
+                    capturedImage = blob;
+                    resultPreview.src = URL.createObjectURL(blob);
+                    resultPreview.style.display = 'block';
+                    cropperSection.style.display = 'none';
+                    resultSection.style.display = 'block';
+                    
+                    // Clean up cropper
+                    cropper.destroy();
+                    cropper = null;
+                }, 'image/jpeg', 0.95);
+            });
+            
+            // Cancel crop
+            cancelBtn.addEventListener('click', function() {
+                cropperSection.style.display = 'none';
+                
+                if (webcamMode.checked) {
+                    webcamSection.style.display = 'block';
+                    startWebcam();
+                } else {
+                    uploadSection.style.display = 'block';
+                }
+                
+                if (cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+            });
+            
             // Initialize - start with webcam mode
             if (webcamMode.checked) {
                 webcamSection.style.display = 'block';
