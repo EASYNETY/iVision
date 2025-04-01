@@ -292,13 +292,23 @@ def register():
     
     if len(faces) == 0:
         os.remove(file_path)  # Clean up the file if no face is detected
-        return jsonify({'success': False, 'message': 'No face detected in the image'}), 400
+        return jsonify({'success': False, 'message': 'No face detected in the image. Please upload a clearer image with your face visible.'}), 400
     
     if len(faces) > 1:
-        os.remove(file_path)  # Clean up the file if multiple faces are detected
-        return jsonify({'success': False, 'message': 'Multiple faces detected. Please upload an image with a single face'}), 400
+        logging.warning(f"Multiple faces detected ({len(faces)}). Using the largest face and cropping the image.")
     
-    # Get face encoding
+    # Crop the face image with padding
+    from util.face_util import crop_face_image
+    cropped_path = crop_face_image(file_path, padding_percent=40)
+    
+    if cropped_path is None:
+        os.remove(file_path)
+        return jsonify({'success': False, 'message': 'Failed to process face image. Please try again with a clearer image of your face.'}), 400
+        
+    # Replace the original image with the cropped one
+    file_path = cropped_path
+    
+    # Get face encoding from the cropped image
     face_encoding = get_face_encoding(file_path)
     
     if face_encoding is None:
@@ -431,21 +441,31 @@ def identify():
             flash('No face was detected in the image. Please try again with a clearer photo where your face is clearly visible.', 'warning')
             return redirect(url_for('identify'))
         else:
-            return jsonify({'success': False, 'message': 'No face detected in the image'}), 400
+            return jsonify({'success': False, 'message': 'No face detected in the image. Please upload a clearer image with your face visible.'}), 400
     
     if len(faces) > 1:
-        os.remove(file_path)  # Clean up
+        logging.warning(f"Multiple faces detected ({len(faces)}). Using the largest face and cropping the image.")
+    
+    # Crop the face image with padding
+    from util.face_util import crop_face_image
+    cropped_path = crop_face_image(file_path, padding_percent=40)
+    
+    if cropped_path is None:
+        os.remove(file_path)
         
         # Check if this is a browser request (HTML) or API call (JSON)
         is_html_request = request.headers.get('Accept', '').find('text/html') >= 0 and 'application/json' not in request.headers.get('Accept', '')
         
         if is_html_request:
-            flash('Multiple faces detected in the image. Please upload a photo with only your face clearly visible.', 'warning')
+            flash('Failed to process your face image. Please try again with better lighting and a clearer photo.', 'warning')
             return redirect(url_for('identify'))
         else:
-            return jsonify({'success': False, 'message': 'Multiple faces detected. Please upload an image with a single face'}), 400
+            return jsonify({'success': False, 'message': 'Failed to process face image. Please try again with a clearer image of your face.'}), 400
     
-    # Get face encoding
+    # Replace the original image with the cropped one
+    file_path = cropped_path
+    
+    # Get face encoding from the cropped image
     face_encoding = get_face_encoding(file_path)
     
     if face_encoding is None:
@@ -474,8 +494,8 @@ def identify():
         
         for user in users:
             user_encoding = user.get_facial_embedding()
-            # Use a threshold of 0.75 (75% similarity)
-            if compare_faces(user_encoding, face_encoding, threshold=0.75):
+            # Use a threshold of 0.95 (95% similarity) for stricter matching
+            if compare_faces(user_encoding, face_encoding, threshold=0.95):
                 match = user
                 # Update last identification timestamp
                 user.last_identification = datetime.utcnow()
