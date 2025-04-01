@@ -216,8 +216,15 @@ def log_audit(user_id, action, status, details=None, ip_address=None):
 def index():
     return render_template('index.html')
 
-@app.route('/register', methods=['POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
+    # For GET requests, render the registration form
+    if request.method == 'GET':
+        roles = Role.query.all()
+        sectors = Sector.query.all()
+        return render_template('register.html', roles=roles, sectors=sectors)
+        
+    # For POST requests, process the registration
     if 'image' not in request.files:
         return jsonify({'success': False, 'message': 'No image file provided'}), 400
     
@@ -636,8 +643,13 @@ def get_user(user_id):
     try:
         # Check if format=json is in query parameters
         if request.args.get('format') == 'json':
+            # Try to find by user_id first (UUID format)
             user = User.query.filter_by(user_id=user_id).first()
             
+            # If not found and it's a numeric ID, try by ID
+            if not user and user_id.isdigit():
+                user = User.query.filter_by(id=int(user_id)).first()
+                
             if not user:
                 return jsonify({'success': False, 'message': 'User not found'}), 404
             
@@ -675,8 +687,13 @@ def get_user(user_id):
             return jsonify({'success': True, 'user': user_data})
         else:
             # HTML view for user details
+            # Try to find by user_id first (UUID format)
             user = User.query.filter_by(user_id=user_id).first()
             
+            # If not found and it's a numeric ID, try by ID
+            if not user and user_id.isdigit():
+                user = User.query.filter_by(id=int(user_id)).first()
+                
             if not user:
                 flash('User not found', 'danger')
                 return redirect(url_for('index'))
@@ -714,8 +731,12 @@ def get_user(user_id):
                 "last_identification": user.last_identification.strftime('%Y-%m-%d %H:%M:%S') if user.last_identification else None
             }
             
-            # Get activity logs for this user - convert the ID to string because audit_logs.user_id is a string type
-            activity_logs = AuditLog.query.filter_by(user_id=str(user_id)).order_by(AuditLog.timestamp.desc()).limit(10).all()
+            # Get activity logs for this user
+            # Need to handle both cases - either user.id or user.user_id could be stored in audit_logs.user_id
+            id_logs = AuditLog.query.filter_by(user_id=str(user.id)).order_by(AuditLog.timestamp.desc()).limit(10).all()
+            uuid_logs = AuditLog.query.filter_by(user_id=user.user_id).order_by(AuditLog.timestamp.desc()).limit(10).all()
+            # Combine both result sets (if any)
+            activity_logs = id_logs + uuid_logs if uuid_logs else id_logs
             
             return render_template('user_details.html', user=user_data, activity_logs=activity_logs)
             
@@ -806,7 +827,17 @@ def get_audit_logs_html():
         def get_user_by_id(user_id):
             if not user_id:
                 return None
-            return User.query.filter_by(id=user_id).first()
+            # Try to find by user_id first (UUID format)
+            user = User.query.filter_by(user_id=user_id).first()
+            if user:
+                return user
+            # If not found and it's a numeric ID, try by ID
+            try:
+                if user_id.isdigit():
+                    return User.query.filter_by(id=int(user_id)).first()
+                return None
+            except:
+                return None
             
         return render_template('audit_logs.html', 
                               logs=log_list, 
@@ -906,8 +937,11 @@ def dashboard():
         if sector:
             sectors.append(sector.name)
     
-    # Get audit logs for this user - convert the ID to string because audit_logs.user_id is a string type
-    recent_logs = AuditLog.query.filter_by(user_id=str(current_user.id)).order_by(AuditLog.timestamp.desc()).limit(5).all()
+    # Get audit logs for this user - need to check both ID formats
+    id_logs = AuditLog.query.filter_by(user_id=str(current_user.id)).order_by(AuditLog.timestamp.desc()).limit(5).all()
+    uuid_logs = AuditLog.query.filter_by(user_id=current_user.user_id).order_by(AuditLog.timestamp.desc()).limit(5).all()
+    # Combine both result sets (if any) 
+    recent_logs = id_logs + uuid_logs if uuid_logs else id_logs
     
     return render_template('dashboard.html', 
                           user=current_user, 
