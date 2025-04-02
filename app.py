@@ -190,6 +190,9 @@ with app.app_context():
     db.session.commit()
 
 def allowed_file(filename):
+    # Check if this is a Blob from JavaScript with no filename
+    if not filename or filename == 'blob':
+        return True
     # Always allow files from the cropper (with .jpg extension)
     if filename.startswith('cropped-facial-login') or filename.startswith('facial-login'):
         return True

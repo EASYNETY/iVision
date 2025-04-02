@@ -505,9 +505,12 @@
                     try {
                         const blob = await imageCapture.takePhoto();
                         
+                        // Create a named blob for server filename validation
+                        const namedBlob = new File([blob], "facial-login.jpg", { type: 'image/jpeg' });
+                        
                         // Show the cropper section
                         webcamSection.style.display = 'none';
-                        cropperImage.src = URL.createObjectURL(blob);
+                        cropperImage.src = URL.createObjectURL(namedBlob);
                         cropperSection.style.display = 'block';
                         
                         // Initialize Cropper.js
@@ -544,9 +547,13 @@
             // File input change
             fileInput.addEventListener('change', function(e) {
                 if (this.files && this.files[0]) {
+                    // Create a copy of the file with consistent naming
+                    const originalFile = this.files[0];
+                    const namedFile = new File([originalFile], "facial-login.jpg", { type: originalFile.type });
+                    
                     // Open in cropper
                     uploadSection.style.display = 'none';
-                    cropperImage.src = URL.createObjectURL(this.files[0]);
+                    cropperImage.src = URL.createObjectURL(namedFile);
                     cropperSection.style.display = 'block';
                     
                     // Initialize Cropper.js
@@ -631,7 +638,9 @@
                 
                 // Convert canvas to blob
                 canvas.toBlob(function(blob) {
-                    capturedImage = blob;
+                    // Create a named blob for server filename validation
+                    const namedBlob = new File([blob], "cropped-facial-login.jpg", { type: 'image/jpeg' });
+                    capturedImage = namedBlob;
                     resultPreview.src = URL.createObjectURL(blob);
                     resultPreview.style.display = 'block';
                     cropperSection.style.display = 'none';
