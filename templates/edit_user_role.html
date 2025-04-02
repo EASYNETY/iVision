@@ -20,7 +20,7 @@
                         <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('list_users') }}">Users</a>
+                        <a class="nav-link" href="{{ url_for('list_users_html') }}">Users</a>
                     </li>
                     
                     {% if current_user.role and current_user.role.name == 'Agency Admin' %}

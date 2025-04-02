@@ -190,6 +190,10 @@ with app.app_context():
     db.session.commit()
 
 def allowed_file(filename):
+    # Always allow files from the cropper (with .jpg extension)
+    if filename.startswith('cropped-facial-login') or filename.startswith('facial-login'):
+        return True
+    # Regular file extension check
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def log_audit(user_id, action, status, details=None, ip_address=None):
